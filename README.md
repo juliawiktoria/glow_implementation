@@ -1,3 +1,1 @@
-just a notebook
-
-trying if it works
+my thesis pls dont hate
