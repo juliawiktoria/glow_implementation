@@ -22,9 +22,6 @@ import torchvision
 from torchvision.datasets import MNIST
 from torchvision import transforms
 
-# other
-from tqdm import tqdm
-
 from model import GlowModel
 from utilities import *
 
@@ -37,8 +34,6 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     model.train()
     loss_meter = AvgMeter()
 
-    # fancy progress bar for the terminal
-    # with tqdm(total=len(trainloader.dataset)) as progress_bar:
     for x, _ in trainloader:
         x = x.to(device)
         optimizer.zero_grad()
@@ -52,35 +47,34 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
         optimizer.step()
         scheduler.step()
 
-        # progress_bar.set_postfix(nll=loss_meter.avg, bpd=bits_per_dimension(x, loss_meter.avg), lr=optimizer.param_groups[0]['lr'])
-        # progress_bar.update(x.size(0))
         global_step += x.size(0)
 
 @torch.no_grad()
-def test(epoch, model, testloader, device, loss_func, num_samples):
+def test(epoch, model, testloader, device, loss_func, num_samples, args):
     print("testing func")
     global best_loss
 
     model.eval()
     loss_meter = AvgMeter()
 
-    # with tqdm(total=len(testloader.dataset)) as progress_bar:
     for x, _ in testloader:
         x = x.to(device)
         z, sldj = model(x, reverse=False)
         loss = loss_func(z, sldj)
         loss_meter.update(loss.item(), x.size(0))
-        # progress_bar.set_postfix(nll=loss_meter.avg, bpd=bits_per_dimension(x, loss_meter.avg))
-        # progress_bar.update(x.size(0))
 
-    # Save samples and data
-    images = sample(model, num_samples, device) 
-    path_to_images = 'samples/epoch' + str(epoch) # custom name for each epoch
-    os.makedirs(path_to_images, exist_ok=True) # create a dir for each epoch
+    if epoch % args.ckpt_interval:
+        print('Saving checkpoint file from the epoch #{}'.format(epoch))
 
-    # 
-    for i in range(images.size(0)):
-        torchvision.utils.save_image(images[i, :, :, :], '{}/img_{}.png'.format(path_to_images, i))
+    # Save samples and data on the specified interval
+    if epoch % args.img_interval:
+        print("saving images from the epoch #{}".format(epoch))
+        images = sample(model, num_samples, device) 
+        path_to_images = 'samples/epoch' + str(epoch) # custom name for each epoch
+        os.makedirs(path_to_images, exist_ok=True) # create a dir for each epoch
+
+        for i in range(images.size(0)):
+            torchvision.utils.save_image(images[i, :, :, :], '{}/img_{}.png'.format(path_to_images, i))
     # images_concat = torchvision.utils.make_grid(images, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
     # torchvision.utils.save_image(images_concat, 'samples/epoch_{}.png'.format(epoch))
 
@@ -101,12 +95,23 @@ def main_wrapper():
     parser.add_argument('-sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     parser.add_argument('--ckpt_interval', type=int, default=1, help='Create a checkpoint file every N epochs.')
     parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
-    
+    parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
+    parser.add_argument('--expr_id', type=str, default='1', help='Experiment ID for logging and identification.')
+
     args = parser.parse_args()
     gpu_ids = [0]
 
     device = 'cuda' if torch.cuda.is_available() and args.gpu else 'cpu'
     print(device)
+
+    # record experiment parameters
+    with open("experiment_params.txt", "a") as file_object:
+        file_object.write("Exp #{}: {} epochs, batch {}, {} channels, {} levels, {} steps, {} samples.\n".format(args.expr_id, 
+                                                                                                                 args.epochs, 
+                                                                                                                 args.batch_size, 
+                                                                                                                 args.num_channels, 
+                                                                                                                 args.num_steps, 
+                                                                                                                 args.num_samples))
 
     # getting data for training; just CIFAR10
     transform_train = transforms.Compose([
@@ -124,6 +129,10 @@ def main_wrapper():
     testset = torchvision.datasets.CIFAR10(root='data', train=False, download=True, transform=transform_test)
     testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
+    if args.resume_training:
+        if args.ckpt_path is "NONE":
+            print("No path for the checkpoint file has been specified.")
+        print("resuming training from checkpoint file: {}".format(args.ckpt_path))
 
     # define the model
     model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
@@ -143,7 +152,7 @@ def main_wrapper():
     # training loop
     print("Starting training of the Glow model")
     for epoch in range(1, args.epochs + 1):
-        print("Epoch [{} / {}]".format(epoch, ))
+        print("Epoch [{} / {}]".format(epoch, args.epochs))
         start_time = time.time()
         train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
         test(epoch, model, testloader, device, loss_function, args.num_samples)
