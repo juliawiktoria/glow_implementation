@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn.utils as utils
+import os
 
 # standard meter class used tracking metrics of generative models
 class AvgMeter(object):
@@ -95,3 +96,16 @@ def sample(model, batch_size, device):
     x = torch.sigmoid(x)
 
     return x
+
+def save_model_checkpoint(model, epoch, avg_loss, best=False):
+    if not best:
+        file_name = "checkpoint_epoch_{}.pth.tar".format(epoch)
+    else:
+        file_name = "best_checkpoint_epoch_{}.pth.tar".format(epoch)
+        # saving model in the current epoch to a file
+    os.makedir('checkpoints', exist_ok=True)
+    saving_path = os.path.join('checkpoins', file_name)
+    torch.save({'epoch': epoch,
+                'state_dict': model.state_dict(),
+                'test_loss': avg_loss}, saving_path)
+    print("model saved to a file named {}".format(file_name))
