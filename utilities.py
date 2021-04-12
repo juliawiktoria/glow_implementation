@@ -109,3 +109,13 @@ def save_model_checkpoint(model, epoch, avg_loss, best=False):
                 'state_dict': model.state_dict(),
                 'test_loss': avg_loss}, saving_path)
     print("model saved to a file named {}".format(file_name))
+
+def split_tensor(tensor, op_type="split"):
+    tensor_size_1 = tensor.size(1)
+    if op_type == "split":
+        return tensor[:, :tensor_size_1 // 2, ...], tensor[:, tensor_size_1 // 2:, ...]
+    elif op_type == "cross":
+        return tensor[:, 0::2, ...], tensor[:, 1::2, ...]
+    else:
+        print("Incorrect operation type!")
+        return 0
