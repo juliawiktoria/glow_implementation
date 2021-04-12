@@ -19,11 +19,11 @@ import torch.backends.cudnn as cudnn
 
 # Torchvision
 import torchvision
-from torchvision.datasets import MNIST
 from torchvision import transforms
 
 from model import GlowModel
 from utilities import *
+from datasets import *
 
 @torch.enable_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm):
@@ -97,6 +97,7 @@ def main_wrapper():
     parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
     parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
     parser.add_argument('--expr_id', type=str, default='1', help='Experiment ID for logging and identification.')
+    parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10'], help='Choose dataset: [mnist/cifar10]')
 
     args = parser.parse_args()
     gpu_ids = [0]
@@ -113,27 +114,9 @@ def main_wrapper():
                                                                                                                  args.num_steps, 
                                                                                                                  args.num_samples))
 
-    # getting data for training; just CIFAR10
-    transform_train = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()
-    ])
-
-    transform_test = transforms.Compose([
-            transforms.ToTensor()
-    ])
-
-    trainset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=transform_train)
-    trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-
-    testset = torchvision.datasets.CIFAR10(root='data', train=False, download=True, transform=transform_test)
-    testloader = data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-
-    if args.resume_training:
-        if args.ckpt_path is "NONE":
-            print("No path for the checkpoint file has been specified.")
-        print("resuming training from checkpoint file: {}".format(args.ckpt_path))
-
+    # get data for training according to the specified dataset name
+    trainset, trainloader, testset, testloader = get_dataset(args.dataset, args.download, args.batch_size, args.num_workers)
+    
     # define the model
     model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
     model = model.to(device)
@@ -143,6 +126,19 @@ def main_wrapper():
     if device == 'cuda':
         model = torch.nn.DataParallel(model, gpu_ids)
 
+    # account for training continuation; if incorrect path or name, start from the beginning
+    if args.resume_training:
+        if args.ckpt_path is "NONE":
+            print("No path for the checkpoint file has been specified. Training will start without any checkpoint.")
+        # check if file exists
+        if not os.path.isfile(args.ckpt_path):
+            print("The checkpoint path is incorrect! Training will start without any checkpoint.")
+        else:
+            checkpoint_loaded = torch.load(args.ckpt_path)
+            model.load_state_dict
+        print("resuming training from checkpoint file: {}".format(args.ckpt_path))
+
+    # defining the loss function, the optimizer, and the scheduler
     loss_function = NLLLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = sched.LambdaLR(optimizer, lambda s: min(1., s / args.sched_warmup))
@@ -164,6 +160,8 @@ def main_wrapper():
         for line in times_array:
             txt_file.write(" ".join(line) + "\n")
 
-best_loss = 0
-global_loss = 0
-main_wrapper()
+# a very short program, just three lines but still does so much, technology is amazing
+if __name__ == '__main__':
+    best_loss = 0
+    global_loss = 0
+    main_wrapper()
