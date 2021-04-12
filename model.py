@@ -66,7 +66,6 @@ class _GlowLevel(nn.Module):
 class GlowModel(nn.Module):
     def __init__(self, num_channels, num_layers, num_steps):
         super(GlowModel, self).__init__()
-        self.name = "glow"
         self.num_channels = num_channels
         self.num_layers = num_layers
         self.num_steps = num_steps
