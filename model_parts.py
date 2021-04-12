@@ -101,9 +101,9 @@ class ActivationNormalisation(nn.Module):
 
 
 class CNN(nn.Module):
-    def __init__(self, in_channels, mid_channels, out_channels, use_act_norm=False):
+    def __init__(self, in_channels, mid_channels, out_channels):
         super(CNN, self).__init__()
-        norm_function = ActivationNormalisation if use_act_norm else nn.BatchNorm2d
+        norm_function = ActivationNormalisation()
 
         self.in_norm = norm_function(in_channels)
         self.in_conv = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
@@ -114,8 +114,7 @@ class CNN(nn.Module):
         nn.init.normal_(self.mid_conv.weight, 0., 0.05)
 
         self.out_norm = norm_function(mid_channels)
-        self.out_conv = nn.Conv2d(mid_channels, out_channels,
-                                                            kernel_size=3, padding=1, bias=True)
+        self.out_conv = nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=True)
         nn.init.zeros_(self.out_conv.weight)
         nn.init.zeros_(self.out_conv.bias)
 
@@ -137,7 +136,6 @@ class CNN(nn.Module):
 class AffineCoupling(nn.Module):
     def __init__(self, in_channels, mid_channels):
         super(AffineCoupling, self).__init__()
-        self.name = "affine coupling layer"
         self.cnn = CNN(in_channels, mid_channels, in_channels * 2)
         self.scale = nn.Parameter(torch.ones(in_channels, 1, 1))
     
