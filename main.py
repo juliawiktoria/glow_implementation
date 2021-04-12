@@ -135,7 +135,12 @@ def main_wrapper():
             print("The checkpoint path is incorrect! Training will start without any checkpoint.")
         else:
             checkpoint_loaded = torch.load(args.ckpt_path)
-            model.load_state_dict
+            model.load_state_dict(checkpoint_loaded['state_dict'])
+            global best_loss
+            global global_step
+            best_loss = checkpoint_loaded['test_loss']
+            starting_epoch = checkpoint_loaded['epoch']
+            global_step = starting_epoch * len(trainset)
         print("resuming training from checkpoint file: {}".format(args.ckpt_path))
 
     # defining the loss function, the optimizer, and the scheduler
@@ -149,13 +154,18 @@ def main_wrapper():
     print("Starting training of the Glow model")
     for epoch in range(1, args.epochs + 1):
         print("Epoch [{} / {}]".format(epoch, args.epochs))
+
+        # measuring execution time for reference
         start_time = time.time()
+
+        # each epoch consist of training part and testing part
         train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
         test(epoch, model, testloader, device, loss_function, args.num_samples)
-        elapsed_time = time.time() - start_time
 
+        elapsed_time = time.time() - start_time
         times_array.append(["Epoch " + str(epoch) + ": ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time))])
 
+    # record training times for each epoch to a textfile
     with open("epoch_times.txt", "w") as txt_file:
         for line in times_array:
             txt_file.write(" ".join(line) + "\n")
@@ -163,5 +173,5 @@ def main_wrapper():
 # a very short program, just three lines but still does so much, technology is amazing
 if __name__ == '__main__':
     best_loss = 0
-    global_loss = 0
+    global_step = 0
     main_wrapper()
