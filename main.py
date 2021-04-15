@@ -27,7 +27,6 @@ from datasets import *
 
 @torch.enable_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm):
-    # TODO: implement checkpointing
     print("===> EPOCH {}".format(epoch))
     global global_step
     # training mode from torch nn module
@@ -73,12 +72,17 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
         path_to_images = 'samples/epoch' + str(epoch) # custom name for each epoch
         os.makedirs(path_to_images, exist_ok=True) # create a dir for each epoch
 
+        
         for i in range(images.size(0)):
             torchvision.utils.save_image(images[i, :, :, :], '{}/img_{}.png'.format(path_to_images, i))
-    # images_concat = torchvision.utils.make_grid(images, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
-    # torchvision.utils.save_image(images_concat, 'samples/epoch_{}.png'.format(epoch))
 
-def main_wrapper():
+        # saving a nice grid for paper
+        if epoch % args.grid_interval:
+            print('saving nice grid')
+            images_concat = torchvision.utils.make_grid(images, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
+            torchvision.utils.save_image(images_concat, 'samples/grid_epoch_{}.png'.format(epoch))
+
+if __name__ == '__main__':
     # parsing args for easier running of the program
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', action='store_true', default=False, help='Flag indicating GPU use.')
@@ -98,9 +102,13 @@ def main_wrapper():
     parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
     parser.add_argument('--expr_id', type=str, default='1', help='Experiment ID for logging and identification.')
     parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10'], help='Choose dataset: [mnist/cifar10]')
+    parser.add_argument('--grid_interval', type=int, deafult=50, help='How often to save images in a nice grid.')
 
     args = parser.parse_args()
     gpu_ids = [0]
+
+    best_loss = 0
+    global_step = 0
 
     device = 'cuda' if torch.cuda.is_available() and args.gpu else 'cpu'
     print(device)
@@ -133,6 +141,7 @@ def main_wrapper():
         # check if file exists
         if not os.path.isfile(args.ckpt_path):
             print("The checkpoint path is incorrect! Training will start without any checkpoint.")
+        # use save cofiguration
         else:
             checkpoint_loaded = torch.load(args.ckpt_path)
             model.load_state_dict(checkpoint_loaded['state_dict'])
@@ -144,10 +153,12 @@ def main_wrapper():
         print("resuming training from checkpoint file: {}".format(args.ckpt_path))
 
     # defining the loss function, the optimizer, and the scheduler
+    # kinda established things
     loss_function = NLLLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = sched.LambdaLR(optimizer, lambda s: min(1., s / args.sched_warmup))
 
+    # for reference
     times_array = []
 
     # training loop
@@ -169,9 +180,3 @@ def main_wrapper():
     with open("epoch_times.txt", "w") as txt_file:
         for line in times_array:
             txt_file.write(" ".join(line) + "\n")
-
-# a very short program, just three lines but still does so much, technology is amazing
-if __name__ == '__main__':
-    best_loss = 0
-    global_step = 0
-    main_wrapper()
