@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     # account for training continuation; if incorrect path or name, start from the beginning
     if args.resume_training:
-        if args.ckpt_path is "NONE":
+        if args.ckpt_path == "NONE":
             print("No path for the checkpoint file has been specified. Training will start without any checkpoint.")
         # check if file exists
         if not os.path.isfile(args.ckpt_path):
@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
         # each epoch consist of training part and testing part
         train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
-        test(epoch, model, testloader, device, loss_function, args.num_samples)
+        test(epoch, model, testloader, device, loss_function, args.num_samples, args)
 
         elapsed_time = time.time() - start_time
         times_array.append(["Epoch " + str(epoch) + ": ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time))])
