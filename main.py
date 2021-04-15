@@ -129,7 +129,6 @@ if __name__ == '__main__':
     # define the model
     model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
     model = model.to(device)
-    model.describe()
 
     # if using GPU
     if device == 'cuda':
