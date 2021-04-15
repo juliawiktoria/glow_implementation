@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn.utils as utils
 import os
+import torch.nn as nn
 
 # standard meter class used tracking metrics of generative models
 class AvgMeter(object):
