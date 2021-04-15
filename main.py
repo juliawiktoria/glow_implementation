@@ -102,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
     parser.add_argument('--expr_id', type=str, default='1', help='Experiment ID for logging and identification.')
     parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10'], help='Choose dataset: [mnist/cifar10]')
-    parser.add_argument('--grid_interval', type=int, deafult=50, help='How often to save images in a nice grid.')
+    parser.add_argument('--grid_interval', type=int, default=50, help='How often to save images in a nice grid.')
 
     args = parser.parse_args()
     gpu_ids = [0]
