@@ -145,8 +145,8 @@ if __name__ == '__main__':
         else:
             checkpoint_loaded = torch.load(args.ckpt_path)
             model.load_state_dict(checkpoint_loaded['state_dict'])
-            global best_loss
-            global global_step
+            # global best_loss
+            # global global_step
             best_loss = checkpoint_loaded['test_loss']
             starting_epoch = checkpoint_loaded['epoch']
             global_step = starting_epoch * len(trainset)
