@@ -86,6 +86,7 @@ if __name__ == '__main__':
     # parsing args for easier running of the program
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', action='store_true', default=False, help='Flag indicating GPU use.')
+    parser.add_argument('--download', action='store_true', default=False, help='Flag indicating GPU use.')
     parser.add_argument('-num_channels', type=int, default=512, help='Number of channels.')
     parser.add_argument('--num_levels', type=int, default=3, help='Number of flow levels.')
     parser.add_argument('--num_steps', type=int, default=32, help='Number of flow steps.')
