@@ -77,7 +77,7 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
             torchvision.utils.save_image(images[i, :, :, :], '{}/img_{}.png'.format(path_to_images, i))
 
         # saving a nice grid for paper
-        if epoch % args.grid_interval:
+        if epoch % args.grid_interval == 0:
             print('saving nice grid')
             images_concat = torchvision.utils.make_grid(images, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
             torchvision.utils.save_image(images_concat, 'samples/grid_epoch_{}.png'.format(epoch))
