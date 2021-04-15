@@ -69,7 +69,7 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
     if epoch % args.img_interval:
         print("saving images from the epoch #{}".format(epoch))
         images = sample(model, num_samples, device) 
-        path_to_images = 'samples/epoch' + str(epoch) # custom name for each epoch
+        path_to_images = 'samples/epoch_' + str(epoch) # custom name for each epoch
         os.makedirs(path_to_images, exist_ok=True) # create a dir for each epoch
 
         
@@ -114,13 +114,13 @@ if __name__ == '__main__':
     print(device)
 
     # record experiment parameters
-    with open("experiment_params.txt", "a") as file_object:
-        file_object.write("Exp #{}: {} epochs, batch {}, {} channels, {} levels, {} steps, {} samples.\n".format(args.expr_id, 
-                                                                                                                 args.epochs, 
-                                                                                                                 args.batch_size, 
-                                                                                                                 args.num_channels, 
-                                                                                                                 args.num_steps, 
-                                                                                                                 args.num_samples))
+    # with open("experiment_params.txt", "a") as file_object:
+    #     file_object.write("Exp #{}: {} epochs, batch {}, {} channels, {} levels, {} steps, {} samples.\n".format(args.expr_id, 
+    #                                                                                                              args.epochs, 
+    #                                                                                                              args.batch_size, 
+    #                                                                                                              args.num_channels, 
+    #                                                                                                              args.num_steps, 
+    #                                                                                                              args.num_samples))
 
     # get data for training according to the specified dataset name
     trainset, trainloader, testset, testloader = get_dataset(args.dataset, args.download, args.batch_size, args.num_workers)
