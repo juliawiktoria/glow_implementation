@@ -98,6 +98,3 @@ class GlowModel(nn.Module):
         sldj = ldj.flatten(1).sum(-1)
 
         return y, sldj
-
-    def describe(self):
-        print("Model {} with {} convolutional channels, {} model levels, and {} steps in each levels.".format(self.name, self.num_channels, self.num_layers, self.num_steps))
