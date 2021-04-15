@@ -103,7 +103,7 @@ class ActivationNormalisation(nn.Module):
 class CNN(nn.Module):
     def __init__(self, in_channels, mid_channels, out_channels):
         super(CNN, self).__init__()
-        norm_function = ActivationNormalisation()
+        norm_function = ActivationNormalisation
 
         self.in_norm = norm_function(in_channels)
         self.in_conv = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
