@@ -62,11 +62,11 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
         loss = loss_func(z, sldj)
         loss_meter.update(loss.item(), x.size(0))
 
-    if epoch % args.ckpt_interval:
+    if epoch % args.ckpt_interval == 0:
         print('Saving checkpoint file from the epoch #{}'.format(epoch))
 
     # Save samples and data on the specified interval
-    if epoch % args.img_interval:
+    if epoch % args.img_interval == 0:
         print("saving images from the epoch #{}".format(epoch))
         images = sample(model, num_samples, device) 
         path_to_images = 'samples/epoch_' + str(epoch) # custom name for each epoch
