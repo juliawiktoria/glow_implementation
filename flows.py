@@ -304,6 +304,3 @@ class MaskedCouplingFlow(Flow):
 
     def log_abs_det_jacobian(self, z):
         return -torch.sum(torch.abs(self.g_sig(z * self.mask)))
-
-
-
