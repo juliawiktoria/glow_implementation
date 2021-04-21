@@ -223,21 +223,21 @@ if __name__ == '__main__':
 
     if args.model == 'nf':
         train_nf(model, optimizer, scheduler, x, z)
+    else:
+        # training loop repeating for a specified number of epochs; starts from #1 in order to start naming epochs from 1
+        print("Starting training of the Glow model")
+        for epoch in range(1, args.epochs + 1):
+            print("Epoch [{} / {}]".format(epoch, args.epochs))
 
-    # training loop repeating for a specified number of epochs; starts from #1 in order to start naming epochs from 1
-    print("Starting training of the Glow model")
-    for epoch in range(1, args.epochs + 1):
-        print("Epoch [{} / {}]".format(epoch, args.epochs))
+            # measuring epoch execution time for reference
+            start_time = time.time()
 
-        # measuring epoch execution time for reference
-        start_time = time.time()
+            # each epoch consist of training part and testing part
+            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
+            test(epoch, model, testloader, device, loss_function, args.num_samples, args)
 
-        # each epoch consist of training part and testing part
-        train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
-        test(epoch, model, testloader, device, loss_function, args.num_samples, args)
-
-        elapsed_time = time.time() - start_time
-        # recording time per epoch to a dataframe
-        times_array.append(["Epoch " + str(epoch) + ": ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time))])
+            elapsed_time = time.time() - start_time
+            # recording time per epoch to a dataframe
+            times_array.append(["Epoch " + str(epoch) + ": ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time))])
     
     print("the training is finished.")
