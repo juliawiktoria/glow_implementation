@@ -17,14 +17,55 @@ import torch.utils.data as data
 import torch.optim as optim
 import torch.optim.lr_scheduler as sched
 import torch.backends.cudnn as cudnn
+import torch.distributions as distrib
 
 # Torchvision
 import torchvision
 from torchvision import transforms
 
-from model import GlowModel
+from glow_model import GlowModel
+from nf_model import NormalisingFlow
 from utilities import *
 from datasets import *
+from flows import *
+
+def train_nf(model, optimiser, scheduler, plotting_x, plotting_z, ):
+    ref_distrib = distrib.MultivariateNormal(torch.zeros(2), torch.eye(2))
+    id_figure=2
+    plt.figure(figsize=(16, 18))
+    plt.subplot(3,4,1)
+    plt.hexbin(plotting_z[:,0], plotting_z[:,1], C=density_ring(torch.Tensor(plotting_z)).numpy().squeeze(), cmap='rainbow')
+    plt.title('Target density', fontsize=15)
+    for it in range(10001):
+        # Draw a sample batch from Normal
+        samples = ref_distrib.sample((512, ))
+        # Evaluate flow of transforms
+        zk, log_jacobians = model(samples)
+        # Evaluate loss and backprop
+        optimizer.zero_grad()
+        loss_v = loss(density_ring, zk, log_jacobians)
+        loss_v.backward()
+        optimizer.step()
+        scheduler.step()
+        if (it % 1000 == 0):
+            print('Loss (it. %i) : %f'%(it, loss_v.item()))
+            # Draw random samples
+            samples = ref_distrib.sample((int(1e5), ))
+            # Evaluate flow and plot
+            zk, _ = model(samples)
+            zk = zk.detach().numpy()
+            plt.subplot(3,4,id_figure)
+            plt.hexbin(zk[:,0], zk[:,1], cmap='rainbow')
+            plt.title('Iter.%i'%(it), fontsize=15);
+            id_figure += 1
+
+def density_ring(z):
+    z1, z2 = torch.chunk(z, chunks=2, dim=1)
+    norm = torch.sqrt(z1 ** 2 + z2 ** 2)
+    exp1 = torch.exp(-0.5 * ((z1 - 2) / 0.8) ** 2)
+    exp2 = torch.exp(-0.5 * ((z1 + 2) / 0.8) ** 2)
+    u = 0.5 * ((norm - 4) / 0.4) ** 2 - torch.log(exp1 + exp2)
+    return torch.exp(-u)
 
 # enablig grad for loss calc
 @torch.enable_grad()
@@ -95,6 +136,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     # model parameters
+    parser.add_argument('--model', type=str, default='glow', choices=['glow', 'nf'], help='Defines which model to use [glow/nf]')
     parser.add_argument('--num_channels', type=int, default=512, help='Number of channels.')
     parser.add_argument('--num_levels', type=int, default=3, help='Number of flow levels.')
     parser.add_argument('--num_steps', type=int, default=16, help='Number of flow steps.')
@@ -121,6 +163,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     gpu_ids = [0]
 
+    # plottign
+    x = np.linspace(-4, 4, 1000)
+    z = np.array(np.meshgrid(x, x)).transpose(1, 2, 0)
+    z = np.reshape(z, [z.shape[0] * z.shape[1], -1])
+
     # initialising variables for keeping track of the global step and the best loss so far
     best_loss = 0
     global_step = 0
@@ -132,8 +179,14 @@ if __name__ == '__main__':
     trainset, trainloader, testset, testloader = get_dataset(args.dataset, args.download, args.batch_size, args.num_workers)
     
     # define the model
-    model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
-    model = model.to(device)
+    if args.model == 'glow':
+        model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
+        model = model.to(device)
+    
+    if args.model == 'nf':
+        block = [PlanarFlowv2, RadialFlow, AffineCouplingFlow, BatchNormFlow]
+        dens = distrib.MultivariateNormal(torch.zeros(2), torch.eye(2))
+        model = NormalisingFlow(dimension=2, flow_block=block, num_blocks=4, density=dens)
 
     # if using GPU
     if device == 'cuda':
@@ -167,6 +220,9 @@ if __name__ == '__main__':
 
     # for reference
     times_array = []
+
+    if args.model == 'nf':
+        train_nf(model, optimizer, scheduler, x, z)
 
     # training loop repeating for a specified number of epochs; starts from #1 in order to start naming epochs from 1
     print("Starting training of the Glow model")

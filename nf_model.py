@@ -18,8 +18,7 @@ from utilities import squeeze
 class Block(nn.Module):
     def __init__(self):
         super().__init__()
-
-
+        
 class NormalisingFlow(nn.Module):
     def __init__(self, dimension, flow_block, num_blocks, density):
         super().__init__()
