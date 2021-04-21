@@ -18,12 +18,12 @@ from utilities import squeeze
 class Block(nn.Module):
     def __init__(self):
         super().__init__()
-        
+
 class NormalisingFlow(nn.Module):
     def __init__(self, dimension, flow_block, num_blocks, density):
         super().__init__()
         flows = []
-        for block in num_blocks:
+        for i in range (num_blocks):
             for flow in flow_block:
                 flows.append(flow(dimension))
         self.flows = nn.ModuleList(flows)
