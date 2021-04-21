@@ -32,6 +32,9 @@ class Flow(transform.Transform, nn.Module):
     def __hash__(self):
         return nn.Module.__hash__(self)
 
+# domain and codomain are added as own parameters to each class because I was getting an error and that fixed it
+# https://discuss.pytorch.org/t/solved-pytorch1-8-attributeerror-tanhbijector-object-has-no-attribute-domain/116092
+
 class PlanarFlow(Flow):
     def __init__(self, dim, h=torch.tanh, hp=(lambda x: 1 - torch.tanh(x) ** 2)):
         super(PlanarFlow, self).__init__()
