@@ -120,3 +120,8 @@ def split_tensor(tensor, op_type="split"):
     else:
         print("Incorrect operation type!")
         return 0
+
+def loss(density, zk, log_jacobians):
+    sum_of_log_jacobians = sum(log_jacobians)
+    return (-sum_of_log_jacobians - torch.log(density(zk)+1e-9)).mean()
+
