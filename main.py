@@ -30,7 +30,7 @@ from utilities import *
 from datasets import *
 from flows import *
 
-def train_nf(model, optimiser, scheduler, plotting_x, plotting_z, ):
+def train_nf(model, optimiser, scheduler, plotting_x, plotting_z):
     ref_distrib = distrib.MultivariateNormal(torch.zeros(2), torch.eye(2))
     id_figure=2
     plt.figure(figsize=(16, 18))
@@ -59,6 +59,7 @@ def train_nf(model, optimiser, scheduler, plotting_x, plotting_z, ):
             plt.hexbin(zk[:,0], zk[:,1], cmap='rainbow')
             plt.title('Iter.%i'%(it), fontsize=15);
             id_figure += 1
+    plt.savefig("fig.png")
 
 def density_ring(z):
     z1, z2 = torch.chunk(z, chunks=2, dim=1)
