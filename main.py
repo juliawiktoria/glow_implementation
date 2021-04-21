@@ -184,11 +184,11 @@ if __name__ == '__main__':
         model = model.to(device)
     
     if args.model == 'nf':
-        block = [PlanarFlowv2, RadialFlow, AffineCouplingFlow, BatchNormFlow]
+        block = [PlanarFlow, RadialFlow, AffineCouplingFlow, BatchNormFlow]
         dens = distrib.MultivariateNormal(torch.zeros(2), torch.eye(2))
         model = NormalisingFlow(dimension=2, flow_block=block, num_blocks=4, density=dens)
         model = model.to(device)
-        
+
     # if using GPU
     if device == 'cuda':
         model = torch.nn.DataParallel(model, gpu_ids)
