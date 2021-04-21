@@ -57,7 +57,7 @@ class PlanarFlow(Flow):
 class PlanarFlowv2(Flow):
 
     def __init__(self, dim, h=torch.tanh, hp=(lambda x: 1 - torch.tanh(x) ** 2)):
-        super(PlanarFlow, self).__init__()
+        super(PlanarFlowv2, self).__init__()
         self.weight = nn.Parameter(torch.Tensor(1, dim))
         self.scale = nn.Parameter(torch.Tensor(1, dim))
         self.bias = nn.Parameter(torch.Tensor(1))
