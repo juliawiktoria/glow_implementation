@@ -33,31 +33,8 @@ class Flow(transform.Transform, nn.Module):
         return nn.Module.__hash__(self)
 
 class PlanarFlow(Flow):
-
-    def __init__(self, dimension):
-        super(PlanarFlow, self).__init__()
-        self.bijective = False
-        self.weight = nn.Parameter(torch.Tensor(1, dimension))
-        self.scale = nn.Parameter(torch.Tensor(1, dimension))
-        self.bias = nn.Parameter(torch.Tensor(1,))
-
-    def _call(self, z):
-        # apply linear transform to z
-        f_z = F.linear(z, self.weight, self.bias)
-        # return z with activation
-        return z + self.scale * torch.tanh(f_z)
-
-    def log_abs_det_jacobian(self, z):
-        # compute absolute value of the determinant of the matrix Jacobian
-        f_z = F.linear(z, self.weight, self.bias)
-        psi = (1 - torch.tanh(f_z) ** 2) * self.weight
-        det_grad = 1 + torch.mm(psi, self.scale.t())
-        return torch.log(det_grad.abs() + 1e-9)
-
-class PlanarFlowv2(Flow):
-
     def __init__(self, dim, h=torch.tanh, hp=(lambda x: 1 - torch.tanh(x) ** 2)):
-        super(PlanarFlowv2, self).__init__()
+        super(PlanarFlow, self).__init__()
         self.weight = nn.Parameter(torch.Tensor(1, dim))
         self.scale = nn.Parameter(torch.Tensor(1, dim))
         self.bias = nn.Parameter(torch.Tensor(1))
