@@ -40,6 +40,8 @@ class PlanarFlow(Flow):
         self.bias = nn.Parameter(torch.Tensor(1))
         self.h = h
         self.hp = hp
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
         self.init_parameters()
 
     def _call(self, z):
@@ -60,6 +62,8 @@ class RadialFlow(Flow):
         self.alpha = nn.Parameter(torch.Tensor(1))
         self.beta = nn.Parameter(torch.Tensor(1))
         self.dim = dim
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
         self.init_parameters()
 
     def _call(self, z):
@@ -80,6 +84,8 @@ class PReLUFlow(Flow):
         super(PReLUFlow, self).__init__()
         self.alpha = nn.Parameter(torch.Tensor([1]))
         self.bijective = True
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
 
     def init_parameters(self):
         for param in self.parameters():
@@ -112,6 +118,8 @@ class BatchNormFlow(Flow):
         # Trainable scale and shift (cf. original paper)
         self.gamma = nn.Parameter(torch.ones(dim))
         self.beta = nn.Parameter(torch.zeros(dim))
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
         
     def _call(self, z):
         if self.training:
@@ -152,6 +160,8 @@ class AffineFlow(Flow):
     def __init__(self, dim):
         super(AffineFlow, self).__init__()
         self.weights = nn.Parameter(torch.Tensor(dim, dim))
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
         nn.init.orthogonal_(self.weights)
 
     def _call(self, z):
@@ -179,6 +189,8 @@ class AffineLUFlow(Flow):
         self.I = torch.eye(weights.size(0))
         # Now compute s
         self.s = nn.Parameter(torch.Tensor(np.diag(U)))
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
 
     def _call(self, z):
         L = self.L * self.mask_low + self.I
@@ -202,8 +214,10 @@ class AffineCouplingFlow(Flow):
         self.k = dim // 2
         self.g_mu = self.transform_net(self.k, dim - self.k, n_hidden, n_layers, activation)
         self.g_sig = self.transform_net(self.k, dim - self.k, n_hidden, n_layers, activation)
-        self.init_parameters()
         self.bijective = True
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
+        self.init_parameters()
 
     def transform_net(self, nin, nout, nhidden, nlayer, activation):
         net = nn.ModuleList()
@@ -232,6 +246,8 @@ class ReverseFlow(Flow):
         super(ReverseFlow, self).__init__()
         self.permute = torch.arange(dim-1, -1, -1)
         self.inverse = torch.argsort(self.permute)
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
         
     def _call(self, z):
         return z[:, self.permute]
@@ -249,6 +265,8 @@ class ShuffleFlow(ReverseFlow):
         super(ShuffleFlow, self).__init__(dim)
         self.permute = torch.randperm(dim)
         self.inverse = torch.argsort(self.permute)
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
 
 class MaskedCouplingFlow(Flow):
     def __init__(self, dim, mask=None, n_hidden=64, n_layers=2, activation=nn.ReLU):
@@ -257,8 +275,10 @@ class MaskedCouplingFlow(Flow):
         self.g_mu = self.transform_net(dim, dim, n_hidden, n_layers, activation)
         self.g_sig = self.transform_net(dim, dim, n_hidden, n_layers, activation)
         self.mask = mask or torch.cat((torch.ones(self.k), torch.zeros(self.k))).detach()
-        self.init_parameters()
         self.bijective = True
+        self.domain = torch.distributions.constraints.Constraint()
+        self.codomain = torch.distributions.constraints.Constraint()
+        self.init_parameters()
 
     def transform_net(self, nin, nout, nhidden, nlayer, activation):
         net = nn.ModuleList()
