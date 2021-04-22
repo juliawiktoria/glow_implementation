@@ -182,7 +182,7 @@ if __name__ == '__main__':
     
     # define the model
     if args.model == 'glow':
-        model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
+        model = GlowModel(4*3, args.num_channels, args.num_levels, args.num_steps)
         model = model.to(device)
     
     if args.model == 'nf':
