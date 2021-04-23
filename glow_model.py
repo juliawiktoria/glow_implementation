@@ -13,6 +13,7 @@ import torch.backends.cudnn as cudnn
 from model_parts import *
 from utilities import squeeze, gaussian_log, ZeroConv2d
 
+# class for building GlowModel, not to be used on its own
 class _FlowStep(nn.Module):
     # comprises of three transforms
     def __init__(self, in_channels, mid_channels):
@@ -40,6 +41,7 @@ class _FlowStep(nn.Module):
             
         return x, sldj
 
+# class for building GlowModel, not to be used on its own
 class _GlowLevel(nn.Module):
     # creates one glow level
     # level comprises of a squeeze step, K flow steps, and split step (except for the last leves, which does not have a split step)
