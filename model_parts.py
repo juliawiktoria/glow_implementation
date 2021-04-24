@@ -209,7 +209,7 @@ class Split(nn.Module):
         else:
             return x[:, :c//2, ...], x[:, c//2:, ...]
 
-    def forward(self, x, log_jacobian, reverse=False):
+    def forward(self, x, log_jacobian, reverse=False, eps=None):
         # get input dimensions
         b, c, h, w = x.size()
         # normal forward pass
@@ -221,7 +221,7 @@ class Split(nn.Module):
         # reverse pass
         else:
             mean, log_sd = self.cross_split_prior(x)
-            x_new = utilities.gaussian_sample(mean, log_sd)
+            x_new = utilities.gaussian_sample(mean, log_sd, eps)
             z = torch.cat((x, x_new), dim=1)
             return z, log_jacobian
         
