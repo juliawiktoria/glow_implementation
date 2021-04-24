@@ -112,12 +112,17 @@ def loss(density, zk, log_jacobians):
     sum_of_log_jacobians = sum(log_jacobians)
     return (-sum_of_log_jacobians - torch.log(density(zk)+1e-9)).mean()
 
+# random tensor from standard normal dist
+def gaussian_random(mean_shape, eps=None):
+    return torch.normal(mean=torch.zeros(mean_shape),
+                        std=torch.ones_like(mean_shape) * eps)
+
 # just some calculations for forward split layer
 def gaussian_log_p(x, mean, logsd):
     return -0.5 * math.log(2 * math.pi) - logsd - 0.5 * (x - mean) ** 2 / torch.exp(2 * logsd)
 
 # calculation for reverse split layer
-def gaussian_sample(mean, logsd, eps=1):
+def gaussian_sample(mean, logsd, eps=None):
     return mean + torch.exp(logsd) * eps
 
 def gaussian_likelihood(x, logs, mean):
