@@ -66,17 +66,12 @@ class _GlowLevel(nn.Module):
 
             # 3. split
             if self.split:
-                print('split')
-            else:
-                print('no split')
-        
+                x, log_det_jacobian = self.split(x, log_det_jacobian, reverse)
         # reverse pass when reverse == True
-        if reverse:
+        else:
             # 1. split
             if self.split:
                 print('split')
-            else:
-                print('no split')
 
             # 2. apply K steps [transform3, transform2, transform1] - reversed order
             for step in reversed(self.steps):
@@ -108,24 +103,9 @@ class GlowModel(nn.Module):
             self.in_channels *= 2
         # last layer without the split part
         self.levels.append(_GlowLevel(in_channels=self.in_channels, mid_channels=self.num_channels, num_steps=self.num_steps, if_split=False))
-
-    def forward(self, x, reverse=False):
-        if reverse:
-            log_det_jacobian = torch.zeros(x.size(0), device=x.device)
-        else:
-            if x.min() < 0 or x.max() > 1:
-                raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
-            x, log_det_jacobian = self._pre_process(x)
-        
-        x = squeeze(x)
-        # pass the input through all the glow levels iteratively
-        for level in self.levels:
-            x, sljd = level(x, log_det_jacobian, reverse)
-        x = squeeze(x, reverse=True)
-
-        return x, log_det_jacobian
     
     def _pre_process(self, x):
+        # pre-process input
         y = (x * 255. + torch.rand_like(x)) / 256.
         y = (2 * y - 1) * self.bounds
         y = (y + 1) / 2
@@ -134,5 +114,23 @@ class GlowModel(nn.Module):
         # Save log-determinant of Jacobian of initial transform
         ldj = F.softplus(y) + F.softplus(-y) - F.softplus((1. - self.bounds).log() - self.bounds.log())
         log_det_jacobian = ldj.flatten(1).sum(-1)
-
         return y, log_det_jacobian
+
+    def forward(self, x, reverse=False):
+        # defining first log_det for the forward pass
+        if not reverse:
+            if x.min() < 0 or x.max() > 1:
+                raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
+            x, log_det_jacobian = self._pre_process(x)
+        # defining first log_det for thereverse pass
+        else:    
+            log_det_jacobian = torch.zeros(x.size(0), device=x.device)
+        
+        x = squeeze(x)
+        # pass the input through all the glow levels iteratively
+        # each block solves the direction of the pass within itself
+        for level in self.levels:
+            x, sljd = level(x, log_det_jacobian, reverse)
+        x = squeeze(x, reverse=True)
+
+        return x, log_det_jacobian
