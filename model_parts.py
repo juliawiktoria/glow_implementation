@@ -191,33 +191,39 @@ class Split(nn.Module):
         self.split = if_split
         # learned prior that can be parametrized which results in better likelihood
         if if_split:
-            self.prior = ZeroConv2d(in_channels * 2, in_channels * 4)
+            self.conv_prior = ZeroConv2d(in_channels * 2, in_channels * 4)
         else:
-            self.prior = ZeroConv2d(in_channels * 4, in_channels * 8)
+            self.conv_prior = ZeroConv2d(in_channels * 4, in_channels * 8)
     
-    def cross_split_prior(self, x):
+    def prior(self, x):
         # split or cross tensor
         b, c, h, w = x.size()
-        new = self.prior(x)
-        return new[:, 0::2, ...], new[:, 1::2, ...]
+        new = self.conv_prior(x)
+        return self.split_tensor(new)
 
-    def just_split(self, x):
+    def split_tensor(self, x, type='cross'):
+        # tensor splitting
         b, c, h, w = x.size()
-        return x[:, c//2, ...], x[:, c//2, ...]
+        if type == 'cross':
+            return x[:, 0::2, ...], x[:, 1::2, ...]
+        else:
+            return x[:, :c//2, ...], x[:, c//2:, ...]
 
     def forward(self, x, log_jacobian, reverse=False):
         # get input dimensions
         b, c, h, w = x.size()
-        if reverse:
+        # normal forward pass
+        if not reverse:
+            z_1, z_2 = self.split_tensor(x, type='normal')
+            mean, log_sd = self.prior(z_1)
+            log_jacobian = utilities.gaussian_likelihood(x, log_sd, mean) + log_jacobian
+            return z_1, log_jacobian
+        # reverse pass
+        else:
             mean, log_sd = self.cross_split_prior(x)
             x_new = utilities.gaussian_sample(mean, log_sd)
             z = torch.cat((x, x_new), dim=1)
             return z, log_jacobian
-        else:
-            z_1, z_2 = self.just_split(x)
-            mean, log_sd = self.cross_split_prior(z_1)
-            log_jacobian = utilities.gaussian_likelihood(x, log_sd, mean) + log_jacobian
-            return z_1, log_jacobian
         
 class ZeroConv2d(nn.Module):
     # class for prior in Split
