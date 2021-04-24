@@ -25,21 +25,21 @@ class _FlowStep(nn.Module):
         self.flow_transformation = None
         self.coupling = AffineCoupling(in_channels // 2, mid_channels)
 
-    def forward(self, x, sldj=None, reverse=False):
+    def forward(self, x, log_det_jacobian=None, reverse=False):
         # normal forward pass [ActNorm, 1x1conv, AffCoupling]
         if not reverse:
-            x, sldj = self.normalisation(x, sldj, reverse)
-            x, sldj = self.convolution(x, sldj, reverse)
+            x, log_det_jacobian = self.normalisation(x, log_det_jacobian, reverse)
+            x, log_det_jacobian = self.convolution(x, log_det_jacobian, reverse)
             # flow transform step
-            x, sldj = self.coupling(x, sldj, reverse)
+            x, log_det_jacobian = self.coupling(x, log_det_jacobian, reverse)
         # reversed pass [AffCoupling, 1x1conv, ActNorm]
         else:
-            x, sldj = self.coupling(x, sldj, reverse)
+            x, log_det_jacobian = self.coupling(x, log_det_jacobian, reverse)
             # flow transform step
-            x, sldj = self.convolution(x, sldj, reverse)
-            x, sldj = self.normalisation(x, sldj, reverse)
+            x, log_det_jacobian = self.convolution(x, log_det_jacobian, reverse)
+            x, log_det_jacobian = self.normalisation(x, log_det_jacobian, reverse)
             
-        return x, sldj
+        return x, log_det_jacobian
 
 # class for building GlowModel, not to be used on its own
 class _GlowLevel(nn.Module):
@@ -54,7 +54,7 @@ class _GlowLevel(nn.Module):
         # create K steps of the flow K x ([t,t,t]) where t is a flow transform
         self.steps = nn.ModuleList([_FlowStep(in_channels=in_channels, mid_channels=mid_channels) for _ in range(num_steps)])
 
-    def forward(self, x, sldj, reverse=False):
+    def forward(self, x, log_det_jacobian, reverse=False):
         # normal forward pass when reverse == False
         if not reverse:
             # 1. squeeze
@@ -62,7 +62,7 @@ class _GlowLevel(nn.Module):
 
             # 2. apply K flow steps [transform1, transform2, transform3]
             for step in self.steps:
-                x, sldj = step(x, sldj, reverse)
+                x, log_det_jacobian = step(x, log_det_jacobian, reverse)
 
             # 3. split
             if self.split:
@@ -80,13 +80,14 @@ class _GlowLevel(nn.Module):
 
             # 2. apply K steps [transform3, transform2, transform1] - reversed order
             for step in reversed(self.steps):
-                x, sldj = step(x, sldj, reverse)
+                x, log_det_jacobian = step(x, log_det_jacobian, reverse)
 
             # 3. un-squeeze
             x = self.squeeze(x, reverse)
         
-        return x, sldj
+        return x, log_det_jacobian
 
+# the whole model
 class GlowModel(nn.Module):
     def __init__(self, in_channels, num_channels, num_layers, num_steps):
         super(GlowModel, self).__init__()
@@ -110,19 +111,19 @@ class GlowModel(nn.Module):
 
     def forward(self, x, reverse=False):
         if reverse:
-            sldj = torch.zeros(x.size(0), device=x.device)
+            log_det_jacobian = torch.zeros(x.size(0), device=x.device)
         else:
             if x.min() < 0 or x.max() > 1:
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
-            x, sldj = self._pre_process(x)
+            x, log_det_jacobian = self._pre_process(x)
         
         x = squeeze(x)
         # pass the input through all the glow levels iteratively
         for level in self.levels:
-            x, sljd = level(x, sldj, reverse)
+            x, sljd = level(x, log_det_jacobian, reverse)
         x = squeeze(x, reverse=True)
 
-        return x, sldj
+        return x, log_det_jacobian
     
     def _pre_process(self, x):
         y = (x * 255. + torch.rand_like(x)) / 256.
@@ -132,6 +133,6 @@ class GlowModel(nn.Module):
 
         # Save log-determinant of Jacobian of initial transform
         ldj = F.softplus(y) + F.softplus(-y) - F.softplus((1. - self.bounds).log() - self.bounds.log())
-        sldj = ldj.flatten(1).sum(-1)
+        log_det_jacobian = ldj.flatten(1).sum(-1)
 
-        return y, sldj
+        return y, log_det_jacobian
