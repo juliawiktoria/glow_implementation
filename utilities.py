@@ -61,21 +61,6 @@ def mean_over_dimensions(tensor, dim=None, keepdims=False):
                 tensor.squeeze_(d-i)
         return tensor
 
-# squeezing and unsqueezing (streaching)
-def squeeze(x, reverse=False):
-    b, c, h, w = x.size()
-    if not reverse:
-        # squeeze
-        x = x.view(b, c, h //2, 2, w //2, 2)
-        x = x.permute(0, 1, 3, 5, 2, 4).contiguous()
-        x = x.view(b, c * 2 * 2, h // 2, w // 2)
-    else:
-        # unsqueeze
-        x = x.view(b, c // 4, 2, 2, h, w)
-        x = x.permute(0, 1, 4, 2, 5, 3).contiguous()
-        x = x.view(b, c // 4, h * 2, w * 2)
-    return x
-
 # clipping gradient norm to avoid exploding gradients
 def clip_grad_norm(optimizer, max_norm, norm_type=2):
     for group in optimizer.param_groups:
@@ -125,6 +110,7 @@ def gaussian_log_p(x, mean, logsd):
 def gaussian_sample(mean, logsd, eps=None):
     return mean + torch.exp(logsd) * eps
 
+# computing gaussian likelihood
 def gaussian_likelihood(x, logs, mean):
     gaussian_p = gaussian_log_p(x, mean, logs)
     return torch.sum(gaussian_p, dim=[1,2,3])
