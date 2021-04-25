@@ -13,7 +13,6 @@ import torch.distributions as distrib
 import torch.distributions.transforms as transform
 
 from model_parts import ActivationNormalisation, AffineCoupling, InvertedConvolution
-from utilities import squeeze
 
 class Block(nn.Module):
     def __init__(self):
