@@ -11,7 +11,6 @@ import torch.optim.lr_scheduler as sched
 import torch.backends.cudnn as cudnn
 
 from model_parts import *
-from utilities import squeeze, gaussian_log, ZeroConv2d
 
 # class for building GlowModel, not to be used on its own
 class _FlowStep(nn.Module):
@@ -92,6 +91,8 @@ class GlowModel(nn.Module):
         self.num_steps = num_steps
         self.register_buffer('bounds', torch.tensor([0.9], dtype=torch.float32))
 
+        self.squeeze = Squeeze()
+
         self.levels = nn.ModuleList()
         self.create_levels()
 
@@ -126,11 +127,11 @@ class GlowModel(nn.Module):
         else:    
             log_det_jacobian = torch.zeros(x.size(0), device=x.device)
         
-        x = squeeze(x)
+        x = self.squeeze(x)
         # pass the input through all the glow levels iteratively
         # each block solves the direction of the pass within itself
         for level in self.levels:
             x, sljd = level(x, log_det_jacobian, reverse)
-        x = squeeze(x, reverse=True)
+        x = self.squeeze(x, reverse=True)
 
         return x, log_det_jacobian
