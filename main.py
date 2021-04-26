@@ -1,73 +1,23 @@
 ## Standard libraries
 import os
-import math
 import time
 import numpy as np
 import argparse
 import sys
 
-## Imports for plotting
-import matplotlib.pyplot as plt
-
-## PyTorch
+# pytorch
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.data as data
 import torch.optim as optim
 import torch.optim.lr_scheduler as sched
-import torch.backends.cudnn as cudnn
-import torch.distributions as distrib
-import torch.distributions.transforms as transform
 
 # Torchvision
 import torchvision
-from torchvision import transforms
 
 from glow_model import GlowModel
-from nf_model import NormalisingFlow
 from utilities import *
 from datasets import *
 from flows import *
-
-def train_nf(model, optimiser, scheduler, plotting_x, plotting_z):
-    ref_distrib = distrib.MultivariateNormal(torch.zeros(2), torch.eye(2))
-    id_figure=2
-    plt.figure(figsize=(16, 18))
-    plt.subplot(3,4,1)
-    plt.hexbin(plotting_z[:,0], plotting_z[:,1], C=density_ring(torch.Tensor(plotting_z)).numpy().squeeze(), cmap='rainbow')
-    plt.title('Target density', fontsize=15)
-    for it in range(10001):
-        # Draw a sample batch from Normal
-        samples = ref_distrib.sample((512, ))
-        # Evaluate flow of transforms
-        zk, log_jacobians = model(samples)
-        # Evaluate loss and backprop
-        optimizer.zero_grad()
-        loss_v = loss(density_ring, zk, log_jacobians)
-        loss_v.backward()
-        optimizer.step()
-        scheduler.step()
-        if (it % 1000 == 0):
-            print('Loss (it. %i) : %f'%(it, loss_v.item()))
-            # Draw random samples
-            samples = ref_distrib.sample((int(1e5), ))
-            # Evaluate flow and plot
-            zk, _ = model(samples)
-            zk = zk.detach().numpy()
-            plt.subplot(3,4,id_figure)
-            plt.hexbin(zk[:,0], zk[:,1], cmap='rainbow')
-            plt.title('Iter.%i'%(it), fontsize=15);
-            id_figure += 1
-    plt.savefig("fig.png")
-
-def density_ring(z):
-    z1, z2 = torch.chunk(z, chunks=2, dim=1)
-    norm = torch.sqrt(z1 ** 2 + z2 ** 2)
-    exp1 = torch.exp(-0.5 * ((z1 - 2) / 0.8) ** 2)
-    exp2 = torch.exp(-0.5 * ((z1 + 2) / 0.8) ** 2)
-    u = 0.5 * ((norm - 4) / 0.4) ** 2 - torch.log(exp1 + exp2)
-    return torch.exp(-u)
 
 # enablig grad for loss calc
 @torch.enable_grad()
@@ -163,12 +113,6 @@ if __name__ == '__main__':
     parser.add_argument('--grid_interval', type=int, default=50, help='How often to save images in a nice grid.')
 
     args = parser.parse_args()
-    gpu_ids = [0]
-
-    # plottign
-    x = np.linspace(-4, 4, 1000)
-    z = np.array(np.meshgrid(x, x)).transpose(1, 2, 0)
-    z = np.reshape(z, [z.shape[0] * z.shape[1], -1])
 
     # initialising variables for keeping track of the global step and the best loss so far
     best_loss = 0
@@ -184,16 +128,6 @@ if __name__ == '__main__':
     if args.model == 'glow':
         model = GlowModel(4*3, args.num_channels, args.num_levels, args.num_steps)
         model = model.to(device)
-    
-    if args.model == 'nf':
-        block = [PReLUFlow, AffineCouplingFlow, BatchNormFlow]
-        dens = distrib.MultivariateNormal(torch.zeros(2), torch.eye(2))
-        model = NormalisingFlow(dimension=2, flow_block=block, num_blocks=4, density=dens)
-        model = model.to(device)
-
-    # if using GPU
-    if device == 'cuda':
-        model = torch.nn.DataParallel(model, gpu_ids)
 
     # account for training continuation; if incorrect checkpoint file name terminate the program with an appropriate error message
     if args.resume_training:
@@ -224,23 +158,20 @@ if __name__ == '__main__':
     # for reference
     times_array = []
 
-    if args.model == 'nf':
-        train_nf(model, optimizer, scheduler, x, z)
-    else:
-        # training loop repeating for a specified number of epochs; starts from #1 in order to start naming epochs from 1
-        print("Starting training of the Glow model")
-        for epoch in range(1, args.epochs + 1):
-            print("Epoch [{} / {}]".format(epoch, args.epochs))
+    # training loop repeating for a specified number of epochs; starts from #1 in order to start naming epochs from 1
+    print("Starting training of the Glow model")
+    for epoch in range(1, args.epochs + 1):
+        print("Epoch [{} / {}]".format(epoch, args.epochs))
 
-            # measuring epoch execution time for reference
-            start_time = time.time()
+        # measuring epoch execution time for reference
+        start_time = time.time()
 
-            # each epoch consist of training part and testing part
-            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
-            test(epoch, model, testloader, device, loss_function, args.num_samples, args)
+        # each epoch consist of training part and testing part
+        train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
+        test(epoch, model, testloader, device, loss_function, args.num_samples, args)
 
-            elapsed_time = time.time() - start_time
-            # recording time per epoch to a dataframe
-            times_array.append(["Epoch " + str(epoch) + ": ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time))])
+        elapsed_time = time.time() - start_time
+        # recording time per epoch to a dataframe
+        times_array.append(["Epoch " + str(epoch) + ": ", time.strftime("%H:%M:%S", time.gmtime(elapsed_time))])
     
     print("the training is finished.")
