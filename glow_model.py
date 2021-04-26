@@ -5,10 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.data as data
-import torch.optim as optim
-import torch.optim.lr_scheduler as sched
-import torch.backends.cudnn as cudnn
 
 from model_parts import *
 
@@ -91,8 +87,6 @@ class GlowModel(nn.Module):
         self.num_steps = num_steps
         self.register_buffer('bounds', torch.tensor([0.9], dtype=torch.float32))
 
-        self.squeeze = Squeeze()
-
         self.levels = nn.ModuleList()
         self.create_levels()
 
@@ -118,7 +112,7 @@ class GlowModel(nn.Module):
         return y, sum_lower_det_jacobian
 
     def forward(self, x, reverse=False):
-        # defining first log_det for the forward pass
+        # defining first lower jacobian determinant for the forward pass
         if not reverse:
             if x.min() < 0 or x.max() > 1:
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
@@ -127,11 +121,9 @@ class GlowModel(nn.Module):
         else:    
             sum_lower_det_jacobian = torch.zeros(x.size(0), device=x.device)
         
-        # x = self.squeeze(x)
         # pass the input through all the glow levels iteratively
         # each block solves the direction of the pass within itself
         for level in self.levels:
             x, sum_lower_det_jacobian = level(x, sum_lower_det_jacobian, reverse)
-        x = self.squeeze(x, reverse=True)
 
         return x, sum_lower_det_jacobian
