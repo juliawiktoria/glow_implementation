@@ -32,9 +32,9 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
         x = x.to(device)
         optimizer.zero_grad()
         # forward pass so reverse mode is turned off
-        z, sldj = model(x, reverse=False)
+        z, sum_lower_det_jacobian = model(x, reverse=False)
         # calculating and updating loss
-        loss = loss_func(z, sldj)
+        loss = loss_func(z, sum_lower_det_jacobian)
         loss_meter.update(loss.item(), x.size(0))
         loss.backward()
 
@@ -58,8 +58,8 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
 
     for x, _ in testloader:
         x = x.to(device)
-        z, sldj = model(x, reverse=False)
-        loss = loss_func(z, sldj)
+        z, sum_lower_det_jacobian = model(x, reverse=False)
+        loss = loss_func(z, sum_lower_det_jacobian)
         loss_meter.update(loss.item(), x.size(0))
 
     if epoch % args.ckpt_interval == 0:
