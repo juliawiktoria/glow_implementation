@@ -21,20 +21,20 @@ class InvertedConvolution(nn.Module):
         w_init = np.linalg.qr(w_init)[0].astype(np.float32)
         self.weights = nn.Parameter(torch.from_numpy(w_init))
 
-    def forward(self, x, sldj, reverse=False):
+    def forward(self, x, sum_lower_det_jacobian, reverse=False):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
 
         if reverse:
             weights = torch.inverse(self.weights.double()).float()
-            sldj = sldj - lower_det_jacobian
+            sum_lower_det_jacobian = sum_lower_det_jacobian - lower_det_jacobian
         else:
             weights = self.weights
-            sldj = sldj + lower_det_jacobian
+            sum_lower_det_jacobian = sum_lower_det_jacobian + lower_det_jacobian
 
         weights = weights.view(self.num_channels, self.num_channels, 1, 1)
         z = F.conv2d(x, weights)
 
-        return z, sldj
+        return z, sum_lower_det_jacobian
 
 class ActivationNormalisation(nn.Module):
     def __init__(self, num_features, scale=1., return_lower_det_jacobian=False):
@@ -68,7 +68,7 @@ class ActivationNormalisation(nn.Module):
         else:
             return x + self.bias
 
-    def _scale(self, x, sldj, reverse=False):
+    def _scale(self, x, sum_lower_det_jacobian, reverse=False):
         logs = self.logs
 
         if reverse:
@@ -76,14 +76,14 @@ class ActivationNormalisation(nn.Module):
         else:
             x = x * logs.exp()
         
-        if sldj is not None:
+        if sum_lower_det_jacobian is not None:
             lower_det_jacobian = logs.sum() * x.size(2) * x.size(3)
             if reverse:
-                sldj = sldj - lower_det_jacobian
+                sum_lower_det_jacobian = sum_lower_det_jacobian - lower_det_jacobian
             else:
-                sldj = sldj + lower_det_jacobian
+                sum_lower_det_jacobian = sum_lower_det_jacobian + lower_det_jacobian
         
-        return x, sldj
+        return x, sum_lower_det_jacobian
     
     def forward(self, x, lower_det_jacobian=None, reverse=False):
         if not self.is_initialised:
@@ -96,10 +96,7 @@ class ActivationNormalisation(nn.Module):
             x = self._center(x, reverse)
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
         
-        if self.return_lower_det_jacobian:
-            return x, lower_det_jacobian
-        
-        return x
+        return x, lower_det_jacobian
 
 class CNN(nn.Module):
     # cnn for affine coupling layer with an extra hidden layer
@@ -125,19 +122,19 @@ class CNN(nn.Module):
         nn.init.zeros_(self.out_conv.bias)
 
     def forward(self, x):
-        x = self.in_norm(x)
+        x, _ = self.in_norm(x)
         x = F.relu(x)
         x = self.in_conv(x)
 
-        x = self.mid_norm(x)
+        x, _ = self.mid_norm(x)
         x = F.relu(x)
         x = self.mid_conv(x)
 
-        x = self.mid_norm_2(x)
+        x, _ = self.mid_norm_2(x)
         x = F.relu(x)
         x = self.mid_conv_2(x)
 
-        x = self.out_norm(x)
+        x, _ = self.out_norm(x)
         x = F.relu(x)
         x = self.out_conv(x)
 

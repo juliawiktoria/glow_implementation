@@ -24,21 +24,21 @@ class _FlowStep(nn.Module):
         self.flow_transformation = None
         self.coupling = AffineCoupling(in_channels // 2, mid_channels)
 
-    def forward(self, x, log_det_jacobian=None, reverse=False):
+    def forward(self, x, sum_lower_det_jacobian=None, reverse=False):
         # normal forward pass [ActNorm, 1x1conv, AffCoupling]
         if not reverse:
-            x, log_det_jacobian = self.normalisation(x, log_det_jacobian, reverse)
-            x, log_det_jacobian = self.convolution(x, log_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = self.normalisation(x, sum_lower_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = self.convolution(x, sum_lower_det_jacobian, reverse)
             # flow transform step
-            x, log_det_jacobian = self.coupling(x, log_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = self.coupling(x, sum_lower_det_jacobian, reverse)
         # reversed pass [AffCoupling, 1x1conv, ActNorm]
         else:
-            x, log_det_jacobian = self.coupling(x, log_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = self.coupling(x, sum_lower_det_jacobian, reverse)
             # flow transform step
-            x, log_det_jacobian = self.convolution(x, log_det_jacobian, reverse)
-            x, log_det_jacobian = self.normalisation(x, log_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = self.convolution(x, sum_lower_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = self.normalisation(x, sum_lower_det_jacobian, reverse)
             
-        return x, log_det_jacobian
+        return x, sum_lower_det_jacobian
 
 # class for building GlowModel, not to be used on its own
 class _GlowLevel(nn.Module):
@@ -53,7 +53,7 @@ class _GlowLevel(nn.Module):
         # create K steps of the flow K x ([t,t,t]) where t is a flow transform
         self.steps = nn.ModuleList([_FlowStep(in_channels=in_channels, mid_channels=mid_channels) for _ in range(num_steps)])
 
-    def forward(self, x, log_det_jacobian, reverse=False):
+    def forward(self, x, sum_lower_det_jacobian, reverse=False):
         # normal forward pass when reverse == False
         if not reverse:
             # 1. squeeze
@@ -61,11 +61,11 @@ class _GlowLevel(nn.Module):
 
             # 2. apply K flow steps [transform1, transform2, transform3]
             for step in self.steps:
-                x, log_det_jacobian = step(x, log_det_jacobian, reverse)
+                x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
 
             # 3. split
             if self.split:
-                x, log_det_jacobian = self.split(x, log_det_jacobian, reverse)
+                x, sum_lower_det_jacobian = self.split(x, sum_lower_det_jacobian, reverse)
         # reverse pass when reverse == True
         else:
             # 1. split
@@ -74,12 +74,12 @@ class _GlowLevel(nn.Module):
 
             # 2. apply K steps [transform3, transform2, transform1] - reversed order
             for step in reversed(self.steps):
-                x, log_det_jacobian = step(x, log_det_jacobian, reverse)
+                x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
 
             # 3. un-squeeze
             x = self.squeeze(x, reverse)
         
-        return x, log_det_jacobian
+        return x, sum_lower_det_jacobian
 
 # the whole model
 class GlowModel(nn.Module):
@@ -114,24 +114,24 @@ class GlowModel(nn.Module):
 
         # Save log-determinant of Jacobian of initial transform
         ldj = F.softplus(y) + F.softplus(-y) - F.softplus((1. - self.bounds).log() - self.bounds.log())
-        log_det_jacobian = ldj.flatten(1).sum(-1)
-        return y, log_det_jacobian
+        sum_lower_det_jacobian = ldj.flatten(1).sum(-1)
+        return y, sum_lower_det_jacobian
 
     def forward(self, x, reverse=False):
         # defining first log_det for the forward pass
         if not reverse:
             if x.min() < 0 or x.max() > 1:
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
-            x, log_det_jacobian = self._pre_process(x)
+            x, sum_lower_det_jacobian = self._pre_process(x)
         # defining first log_det for thereverse pass
         else:    
-            log_det_jacobian = torch.zeros(x.size(0), device=x.device)
+            sum_lower_det_jacobian = torch.zeros(x.size(0), device=x.device)
         
-        x = self.squeeze(x)
+        # x = self.squeeze(x)
         # pass the input through all the glow levels iteratively
         # each block solves the direction of the pass within itself
         for level in self.levels:
-            x, sljd = level(x, log_det_jacobian, reverse)
+            x, sum_lower_det_jacobian = level(x, sum_lower_det_jacobian, reverse)
         x = self.squeeze(x, reverse=True)
 
-        return x, log_det_jacobian
+        return x, sum_lower_det_jacobian
