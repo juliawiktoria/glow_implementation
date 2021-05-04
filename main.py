@@ -18,9 +18,10 @@ from glow_model import GlowModel
 from utilities import *
 from datasets import *
 from flows import *
+from tqdm import tqdm
 
 # enablig grad for loss calc
-# @torch.no_grad()
+@torch.enable_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
     print("\t-> TRAIN")
     # global global_step
@@ -29,28 +30,28 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     # initialising counter for loss calculations
     loss_meter = AvgMeter()
 
-    # with tqdm(total=len(trainloader.dataset)) as progress_bar:
-    for x, _ in trainloader:
-        x = x.to(device)
-        optimizer.zero_grad()
-        # forward pass so reverse mode is turned off
-        z, sldj = model(x, reverse=False)
-        # calculating and updating loss
-        loss = loss_func(z, sldj)
-        loss_meter.update(loss.item(), x.size(0))
-        loss.backward()
+    with tqdm(total=len(trainloader.dataset)) as progress_bar:
+        for x, _ in trainloader:
+            x = x.to(device)
+            optimizer.zero_grad()
+            # forward pass so reverse mode is turned off
+            z, sldj = model(x, reverse=False)
+            # calculating and updating loss
+            loss = loss_func(z, sldj)
+            loss_meter.update(loss.item(), x.size(0))
+            loss.backward()
 
-        # # clip gradient if too much
-        # if max_grad_norm > 0:
-        #     clip_grad_norm(optimizer, max_grad_norm)
+            # clip gradient if too much
+            if max_grad_norm > 0:
+                clip_grad_norm(optimizer, max_grad_norm)
 
-        # advance optimizer and scheduler and update parameters
-        optimizer.step()
-        scheduler.step()
-            # progress_bar.set_postfix(nll=loss_meter.avg,
-            #                         bpd=bits_per_dimension(z, loss_meter.avg),
-            #                         lr=optimizer.param_groups[0]['lr'])
-            # progress_bar.update(x.size(0))
+            # advance optimizer and scheduler and update parameters
+            optimizer.step()
+            scheduler.step()
+            progress_bar.set_postfix(nll=loss_meter.avg,
+                                    bpd=bits_per_dimension(z, loss_meter.avg),
+                                    lr=optimizer.param_groups[0]['lr'])
+            progress_bar.update(x.size(0))
 
         global_step += x.size(0)
     # print('output dimensions: {}'.format(z.size()))

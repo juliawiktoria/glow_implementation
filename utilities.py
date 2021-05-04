@@ -74,6 +74,7 @@ def bits_per_dimension(x, nll):
     return bpd
 
 # getting a sample of n (num_samples) images from latent space
+@torch.no_grad()
 def sample(model, device, args):
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
     c, h, w = model.out_channels, model.out_height, model.out_width
