@@ -4,6 +4,7 @@ import torch
 import torch.nn.utils as utils
 import os
 import torch.nn as nn
+import torchvision
 
 # standard meter class used tracking metrics of generative models
 class AvgMeter(object):
@@ -72,25 +73,40 @@ def bits_per_dimension(x, nll):
     bpd = nll / (np.log(2) * dim)
     return bpd
 
-# getting a sample of n (batch_size) images from latent space
-def sample(model, batch_size, device):
-    z = torch.randn((batch_size, 3, 32, 32), dtype=torch.float32, device=device)
+# getting a sample of n (num_samples) images from latent space
+def sample(model, device, args):
+    # get a specified number of tensors in the shape of a desired images from the normal random distribution
+    c, h, w = model.out_channels, model.out_height, model.out_width
+    z = torch.randn((args.num_samples, c, h, w), dtype=torch.float32, device=device)
     # use the invertibility principle to get the sample
-    x, _ = model(z, reverse=True)
-    x = torch.sigmoid(x)
-    return x
+    imgs, _ = model(z, reverse=True, temp=1)
+    imgs = torch.sigmoid(imgs)
+    return imgs
 
-def save_model_checkpoint(model, epoch, avg_loss, best=False):
-    if not best:
-        file_name = "checkpoint_epoch_{}.pth.tar".format(epoch)
-    else:
-        file_name = "best_checkpoint_epoch_{}.pth.tar".format(epoch)
-        # saving model in the current epoch to a file
-    os.makedir('checkpoints', exist_ok=True)
-    saving_path = os.path.join('checkpoins', file_name)
+def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, if_grid=False):
+    os.makedirs(saving_pth, exist_ok=True) # create a dir for each epoch
+    # save every image separately
+    if if_separate:
+        for i in range(imgs.size(0)):
+            torchvision.utils.save_image(imgs[i, :, :, :], '{}/img_{}.png'.format(saving_pth, i))
+    # save images in one grid in one image
+    if if_grid:
+      # save a grid of images
+            images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
+            torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
+
+def save_model_checkpoint(model, epoch, optimizer, scheduler, avg_loss, best=False):
+  # just overwrite a file to know which checkpoint is the best
+    if best:
+        with open('best_checkpoint.txt', 'w') as file:
+          file.write('Epoch with the best loss: {}'.format(epoch))
+    # saving model in the current epoch to a file
+    file_name = "checkpoint_epoch_{}.pth".format(epoch)
     torch.save({'epoch': epoch,
                 'state_dict': model.state_dict(),
-                'test_loss': avg_loss}, saving_path)
+                'test_loss': avg_loss,
+                'optim': optimizer.state_dict(),
+                'sched': scheduler.state_dict()}, file_name)
     print("model saved to a file named {}".format(file_name))
 
 # calculation for reverse split layer
