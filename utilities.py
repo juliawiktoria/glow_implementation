@@ -93,24 +93,44 @@ def save_model_checkpoint(model, epoch, avg_loss, best=False):
                 'test_loss': avg_loss}, saving_path)
     print("model saved to a file named {}".format(file_name))
 
-def loss(density, zk, log_jacobians):
-    sum_of_log_jacobians = sum(log_jacobians)
-    return (-sum_of_log_jacobians - torch.log(density(zk)+1e-9)).mean()
-
-# random tensor from standard normal dist
-def gaussian_random(mean_shape, eps=None):
-    return torch.normal(mean=torch.zeros(mean_shape),
-                        std=torch.ones_like(mean_shape) * eps)
-
-# just some calculations for forward split layer
-def gaussian_log_p(x, mean, logsd):
-    return -0.5 * math.log(2 * math.pi) - logsd - 0.5 * (x - mean) ** 2 / torch.exp(2 * logsd)
-
 # calculation for reverse split layer
-def gaussian_sample(mean, logsd, eps=None):
-    return mean + torch.exp(logsd) * eps
+def gaussian_sample(mean, logs, temperature=1):
+    # Sample from Gaussian with temperature
+    z = torch.normal(mean, torch.exp(logs) * temperature)
+    return z
+
+def gaussian_p(mean, logs, x):
+    """
+    lnL = -1/2 * { ln|Var| + ((X - Mu)^T)(Var^-1)(X - Mu) + kln(2*PI) }
+            k = 1 (Independent)
+            Var = logs ** 2
+    """
+    c = math.log(2 * math.pi)
+    return -0.5 * (logs * 2. + ((x - mean) ** 2) / torch.exp(logs * 2.) + c)
 
 # computing gaussian likelihood
-def gaussian_likelihood(x, logs, mean):
-    gaussian_p = gaussian_log_p(x, mean, logs)
-    return torch.sum(gaussian_p, dim=[1,2,3])
+def gaussian_likelihood(mean, logs, x):
+    p = gaussian_p(mean, logs, x)
+    return torch.sum(p, dim=[1, 2, 3])
+
+def split_feature(tensor, type="split"):
+    """
+    type = ["split", "cross"]
+    """
+    C = tensor.size(1)
+    if type == "split":
+        return tensor[:, :C // 2, ...], tensor[:, C // 2:, ...]
+    elif type == "cross":
+        return tensor[:, 0::2, ...], tensor[:, 1::2, ...]
+
+def compute_same_pad(kernel_size, stride):
+    if isinstance(kernel_size, int):
+        kernel_size = [kernel_size]
+
+    if isinstance(stride, int):
+        stride = [stride]
+
+    assert len(stride) == len(kernel_size),\
+        "Pass kernel size and stride both as int, or both as equal length iterable"
+
+    return [((k - 1) * s + 1) // 2 for k, s in zip(kernel_size, stride)]
