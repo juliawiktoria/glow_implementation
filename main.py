@@ -22,7 +22,7 @@ from flows import *
 # enablig grad for loss calc
 # @torch.no_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
-    print("===> EPOCH {}".format(epoch))
+    print("\t-> TEST")
     # global global_step
     # initialising training mode; just so the model "knows" it is training
     model.train()
@@ -58,7 +58,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
 @torch.no_grad()
 def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best_loss, args):
-    print("\n====testing func====")
+    print("\t-> TRAIN")
     # setting a flag for indicating if this epoch is best ever
     best = False
 
@@ -186,7 +186,7 @@ if __name__ == '__main__':
         # training loop repeating for a specified number of epochs; starts from #1 in order to start naming epochs from 1
         print("Starting training of the Glow model")
         for epoch in range(starting_epoch, args.epochs + 1):
-            print("Epoch [{} / {}]".format(epoch, args.epochs))
+            print("=============> EPOCH [{} / {}]".format(epoch, args.epochs))
 
             # measuring epoch execution time for reference
             start_time = time.time()
