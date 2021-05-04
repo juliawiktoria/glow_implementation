@@ -27,7 +27,8 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     # initialising training mode; just so the model "knows" it is training
     model.train()
     loss_meter = AvgMeter()
-
+    
+    # training on batches
     for x, _ in trainloader:
         x = x.to(device)
         optimizer.zero_grad()
@@ -62,10 +63,11 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
         loss = loss_func(z, sum_lower_det_jacobian)
         loss_meter.update(loss.item(), x.size(0))
 
+    # checking if a checpoint should be saves
     if epoch % args.ckpt_interval == 0:
         print('Saving checkpoint file from the epoch #{}'.format(epoch))
 
-    # Save samples and data on the specified interval
+    # checking if this current epoch is a saving interval
     if epoch % args.img_interval == 0:
         print("saving images from the epoch #{}".format(epoch))
         images = sample(model, num_samples, device) 
@@ -76,7 +78,7 @@ def test(epoch, model, testloader, device, loss_func, num_samples, args):
         for i in range(images.size(0)):
             torchvision.utils.save_image(images[i, :, :, :], '{}/img_{}.png'.format(path_to_images, i))
 
-        # saving a nice grid for paper
+        # check if this epoch a grid should be saved
         if epoch % args.grid_interval == 0:
             print('saving nice grid')
             # save a grid of images
@@ -88,14 +90,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     # model parameters
-    parser.add_argument('--model', type=str, default='glow', choices=['glow', 'nf'], help='Defines which model to use [glow/nf]')
+    parser.add_argument('--model', type=str, default='glow', help='Name of the model in use.')
     parser.add_argument('--num_channels', type=int, default=512, help='Number of channels.')
     parser.add_argument('--num_levels', type=int, default=3, help='Number of flow levels.')
     parser.add_argument('--num_steps', type=int, default=16, help='Number of flow steps.')
     # optimizer and scheduler parameters
     parser.add_argument('--lr', type=float, default=1e-9, help='Learning rate for the optimizer.')
     parser.add_argument('--grad_norm', type=float, default=-1, help="Maximum value of gradient.")
-    parser.add_argument('-sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
+    parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     # training parameters
     parser.add_argument('--gpu', action='store_true', default=False, help='Flag indicating GPU use.')
     parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs.')
