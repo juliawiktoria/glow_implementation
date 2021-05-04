@@ -133,19 +133,23 @@ class CNN(nn.Module):
         nn.init.zeros_(self.out_conv.bias)
 
     def forward(self, x):
-        x, _ = self.in_norm(x)
+        x = self.in_norm(x)
+        # x, _ = self.in_norm(x)
         x = F.relu(x)
         x = self.in_conv(x)
 
-        x, _ = self.mid_norm(x)
+        x = self.mid_norm(x)
+        # x, _ = self.mid_norm(x)
         x = F.relu(x)
         x = self.mid_conv(x)
 
-        x, _ = self.mid_norm_2(x)
+        x = self.mid_norm_2(x)
+        # x, _ = self.mid_norm_2(x)
         x = F.relu(x)
         x = self.mid_conv_2(x)
 
-        x, _ = self.out_norm(x)
+        x = self.out_norm(x)
+        # x, _ = self.out_norm(x)
         x = F.relu(x)
         x = self.out_conv(x)
         return x
