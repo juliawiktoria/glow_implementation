@@ -98,19 +98,20 @@ if __name__ == '__main__':
     
     # model parameters
     parser.add_argument('--model', type=str, default='glow', help='Name of the model in use.')
-    parser.add_argument('--num_channels', type=int, default=512, help='Number of channels.')
-    parser.add_argument('--num_levels', type=int, default=3, help='Number of flow levels.')
-    parser.add_argument('--num_steps', type=int, default=16, help='Number of flow steps.')
+    parser.add_argument('--num_channels', type=int, default=256, help='Number of channels.')
+    parser.add_argument('--num_levels', type=int, default=2, help='Number of flow levels.')
+    parser.add_argument('--num_steps', type=int, default=4, help='Number of flow steps.')
     # optimizer and scheduler parameters
     parser.add_argument('--lr', type=float, default=1e-9, help='Learning rate for the optimizer.')
     parser.add_argument('--grad_norm', type=float, default=-1, help="Maximum value of gradient.")
     parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     # training parameters
-    parser.add_argument('--gpu', action='store_true', default=False, help='Flag indicating GPU use.')
+    parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
     parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs.')
     parser.add_argument('--resume_training', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
-    parser.add_argument('--num_samples', type=int, default=64, help='Number of samples.')
+    parser.add_argument('--num_samples', type=int, default=32, help='Number of samples.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
+    parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
     # dataset 
     parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10'], help='Choose dataset: [mnist/cifar10]')
     parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for datasets.')
@@ -119,7 +120,9 @@ if __name__ == '__main__':
     parser.add_argument('--ckpt_interval', type=int, default=1, help='Create a checkpoint file every N epochs.')
     parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
     parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
-    parser.add_argument('--grid_interval', type=int, default=50, help='How often to save images in a nice grid.')
+    parser.add_argument('--grid_interval', type=int, default=1, help='How often to save images in a nice grid.')
+
+    # python main.py --epochs 10 --download
 
     args = parser.parse_args()
 
@@ -131,7 +134,7 @@ if __name__ == '__main__':
     # os.makedirs('checkpoints', exist_ok=True)
     
     # training on GPU if possible
-    device = 'cuda' if torch.cuda.is_available() and args.gpu else 'cpu'
+    device = 'cuda' if torch.cuda.is_available() and not args.no_gpu else 'cpu'
 
     # get data for training according to the specified dataset name
     trainset, trainloader, testset, testloader = get_dataset(args.dataset, args.download, args.batch_size, args.num_workers)
