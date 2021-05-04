@@ -13,49 +13,47 @@ import torch.backends.cudnn as cudnn
 import utilities
 
 class InvertedConvolution(nn.Module):
-    def __init__(self, num_channels):
+    def __init__(self, num_channels, lu_decomp=False):
         super(InvertedConvolution, self).__init__()
         self.num_channels = num_channels
 
         w_init = np.random.randn(num_channels, num_channels)
         w_init = np.linalg.qr(w_init)[0].astype(np.float32)
         self.weights = nn.Parameter(torch.from_numpy(w_init))
+        self.lu_decomp = lu_decomp
 
-    def forward(self, x, sum_lower_det_jacobian, reverse=False):
+    def forward(self, x, sldj, reverse=False):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
 
         if reverse:
             weights = torch.inverse(self.weights.double()).float()
-            sum_lower_det_jacobian = sum_lower_det_jacobian - lower_det_jacobian
+            sldj = sldj - lower_det_jacobian
         else:
             weights = self.weights
-            sum_lower_det_jacobian = sum_lower_det_jacobian + lower_det_jacobian
+            sldj = sldj + lower_det_jacobian
 
         weights = weights.view(self.num_channels, self.num_channels, 1, 1)
         z = F.conv2d(x, weights)
 
-        return z, sum_lower_det_jacobian
+        return z, sldj
 
 class ActivationNormalisation(nn.Module):
-    def __init__(self, num_features, scale=1., return_lower_det_jacobian=False):
+    def __init__(self, num_features, scale=1.):
         super(ActivationNormalisation, self).__init__()
         self.register_buffer('is_initialised', torch.zeros(1))
         self.bias = nn.Parameter(torch.zeros(1, num_features, 1, 1))
         self.logs = nn.Parameter(torch.zeros(1, num_features, 1, 1))
-
+        
         self.num_features = num_features
         self.scale = float(scale)
         self.epsilon = 1e-6
-        self.return_lower_det_jacobian = return_lower_det_jacobian
 
     def init_params(self, x):
-        if not self.training:
-            return
         with torch.no_grad():
             bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
-            print("bias shape: {}".format(bias.size()))
+            # print('biaas shape: {}'.format(bias.size()))
             v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
-            print("v shape: {}".format(v.size()))
+            # print('v shape: {}'.format(v.size()))
             logs = (self.scale / (v.sqrt() + self.epsilon)).log()
 
             self.bias.data.copy_(bias.data)
@@ -68,7 +66,7 @@ class ActivationNormalisation(nn.Module):
         else:
             return x + self.bias
 
-    def _scale(self, x, sum_lower_det_jacobian, reverse=False):
+    def _scale(self, x, sldj, reverse=False):
         logs = self.logs
 
         if reverse:
@@ -76,23 +74,25 @@ class ActivationNormalisation(nn.Module):
         else:
             x = x * logs.exp()
         
-        if sum_lower_det_jacobian is not None:
+        if sldj is not None:
             lower_det_jacobian = logs.sum() * x.size(2) * x.size(3)
             if reverse:
-                sum_lower_det_jacobian = sum_lower_det_jacobian - lower_det_jacobian
+                sldj = sldj - lower_det_jacobian
             else:
-                sum_lower_det_jacobian = sum_lower_det_jacobian + lower_det_jacobian
+                sldj = sldj + lower_det_jacobian
         
-        return x, sum_lower_det_jacobian
+        return x, sldj
     
     def forward(self, x, lower_det_jacobian=None, reverse=False):
         if not self.is_initialised:
             self.init_params(x)
         
         if reverse:
+            # print("act norm reverse pass")
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
             x = self._center(x, reverse)
         else:
+            # print('act norm forward pass')
             x = self._center(x, reverse)
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
         
@@ -148,18 +148,22 @@ class AffineCoupling(nn.Module):
     
     def forward(self, x, lower_det_jacobian, reverse=False):
         x_change, x_id = x.chunk(2, dim=1)
-
+        
         st = self.cnn(x_id)
         s, t = st[:, 0::2, ...], st[:, 1::2, ...]
         s = self.scale * torch.tanh(s)
 
         # Scale and translate
-        if reverse:
-                x_change = x_change * s.mul(-1).exp() - t
-                lower_det_jacobian = lower_det_jacobian - s.flatten(1).sum(-1)
+        if not reverse:
+            x_change = (x_change + t) * s.exp()
+            lower_det_jacobian = lower_det_jacobian + s.flatten(1).sum(-1)
         else:
-                x_change = (x_change + t) * s.exp()
-                lower_det_jacobian = lower_det_jacobian + s.flatten(1).sum(-1)
+            # print('AFFINE COUPLING REVERSE PASS')
+            # print('st shape: {}'.format(st.size()))
+            # print('x_change shape: {}\tx_id shape: {}'.format(x_change.size(), x_id.size()))
+            # print('s        shape: {}\tt    shape: {}'.format(s.size(), t.size()))
+            x_change = x_change * s.mul(-1).exp() - t
+            lower_det_jacobian = lower_det_jacobian - s.flatten(1).sum(-1)
 
         x = torch.cat((x_change, x_id), dim=1)
 
@@ -173,70 +177,88 @@ class Squeeze(nn.Module):
         # get input dimensions
         b, c, h, w = x.size()
         if not reverse:
+            # print('squeeze forward')
             # squeeze
             x = x.view(b, c, h //2, 2, w //2, 2)
             x = x.permute(0, 1, 3, 5, 2, 4).contiguous()
             x = x.view(b, c * 2 * 2, h // 2, w // 2)
+            # output shape: (b, 4c, h/2, w/2)
         else:
+            # print('squeeze reverse')
             # unsqueeze
             x = x.view(b, c // 4, 2, 2, h, w)
             x = x.permute(0, 1, 4, 2, 5, 3).contiguous()
             x = x.view(b, c // 4, h * 2, w * 2)
+            # output shape: (b, c/4, 2h, 2w)
         return x
 
-class Split(nn.Module):
-    def __init__(self, in_channels, if_split=True):
-        super(Split, self).__init__()
-        self.split = if_split
-        # learned prior that can be parametrized which results in better likelihood
-        if if_split:
-            self.conv_prior = ZeroConv2d(in_channels * 2, in_channels * 4)
-        else:
-            self.conv_prior = ZeroConv2d(in_channels * 4, in_channels * 8)
-    
-    def prior(self, x):
-        # split or cross tensor
-        b, c, h, w = x.size()
-        new = self.conv_prior(x)
-        return self.split_tensor(new)
-
-    def split_tensor(self, x, type='cross'):
-        # tensor splitting
-        b, c, h, w = x.size()
-        if type == 'cross':
-            return x[:, 0::2, ...], x[:, 1::2, ...]
-        else:
-            return x[:, :c//2, ...], x[:, c//2:, ...]
-
-    def forward(self, x, log_jacobian, reverse=False, eps=None):
-        # get input dimensions
-        b, c, h, w = x.size()
-        # normal forward pass
-        if not reverse:
-            z_1, z_2 = self.split_tensor(x, type='normal')
-            mean, log_sd = self.prior(z_1)
-            log_jacobian = utilities.gaussian_likelihood(x, log_sd, mean) + log_jacobian
-            return z_1, log_jacobian
-        # reverse pass
-        else:
-            mean, log_sd = self.cross_split_prior(x)
-            x_new = utilities.gaussian_sample(mean, log_sd, eps)
-            z = torch.cat((x, x_new), dim=1)
-            return z, log_jacobian
-        
-class ZeroConv2d(nn.Module):
-    # class for prior in Split
-    def __init__(self, in_channels, out_channels, padding=1):
+class Conv2d(nn.Module):
+    def __init__(self, in_channels, out_channels,
+                 kernel_size=(3, 3), stride=(1, 1),
+                 padding="same", weight_std=0.05):
         super().__init__()
 
-        self.conv = nn.Conv2d(in_channels, out_channels, 3, padding=0)
-        self.conv.weight.data.zero_()
+        if padding == "same":
+            padding = utilities.compute_same_pad(kernel_size, stride)
+        elif padding == "valid":
+            padding = 0
+
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride,
+                              padding, bias=1)
+
+        # init weight with std
+        self.conv.weight.data.normal_(mean=0.0, std=weight_std)
+
         self.conv.bias.data.zero_()
-        self.scale = nn.Parameter(torch.zeros(1, out_channels, 1, 1))
 
     def forward(self, input):
-        out = F.pad(input, [1, 1, 1, 1], value=1)
-        out = self.conv(out)
-        out = out * torch.exp(self.scale * 3)
+        x = self.conv(input)
+        return x
 
-        return out
+# https://github.com/y0ast/Glow-PyTorch/blob/dda8e6762bb025d27f1bb70655bc4dc86f8d619f/modules.py#L273
+class Conv2dZeros(nn.Module):
+    def __init__(self, in_channels, out_channels,
+                 kernel_size=(3, 3), stride=(1, 1),
+                 padding="same", logscale_factor=3):
+        super().__init__()
+
+        if padding == "same":
+            padding = utilities.compute_same_pad(kernel_size, stride)
+        elif padding == "valid":
+            padding = 0
+
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride,
+                              padding)
+
+        self.conv.weight.data.zero_()
+        self.conv.bias.data.zero_()
+
+        self.logscale_factor = logscale_factor
+        self.logs = nn.Parameter(torch.zeros(out_channels, 1, 1))
+
+    def forward(self, input):
+        output = self.conv(input)
+        return output * torch.exp(self.logs * self.logscale_factor)
+
+# https://github.com/y0ast/Glow-PyTorch/blob/dda8e6762bb025d27f1bb70655bc4dc86f8d619f/modules.py#L273
+class Split2d(nn.Module):
+    def __init__(self, num_channels):
+        super().__init__()
+        self.conv = Conv2dZeros(num_channels // 2, num_channels)
+
+    def split2d_prior(self, z):
+        h = self.conv(z)
+        return utilities.split_feature(h, "cross")
+
+    def forward(self, input, logdet=0., reverse=False, temperature=None):
+        if reverse:
+            z1 = input
+            mean, logs = self.split2d_prior(z1)
+            z2 = utilities.gaussian_sample(mean, logs, temperature)
+            z = torch.cat((z1, z2), dim=1)
+            return z, logdet
+        else:
+            z1, z2 = utilities.split_feature(input, "split")
+            mean, logs = self.split2d_prior(z1)
+            logdet = utilities.gaussian_likelihood(mean, logs, z2) + logdet
+            return z1, logdet
