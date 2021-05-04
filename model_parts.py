@@ -45,7 +45,7 @@ class ActivationNormalisation(nn.Module):
         # self.register_buffer('is_initialised', torch.zeros(1))
         self.bias = nn.Parameter(torch.zeros(1, num_features, 1, 1))
         self.logs = nn.Parameter(torch.zeros(1, num_features, 1, 1))
-        print('sizes in init act norm: bias [{}], vars [{}]'.format(self.bias.size(), self.logs.size()))
+        # print('sizes in init act norm: bias [{}], vars [{}]'.format(self.bias.size(), self.logs.size()))
         self.is_initialised = False
 
         self.num_features = num_features
@@ -56,10 +56,10 @@ class ActivationNormalisation(nn.Module):
         with torch.no_grad():
             # bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
             bias = -torch.mean(x.clone(), dim=[0, 2, 3], keepdim=True)
-            print('biaas shape: {}'.format(bias.size()))
+            # print('biaas shape: {}'.format(bias.size()))
             # v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
             v = torch.mean((x.clone() + bias) ** 2, dim=[0, 2, 3], keepdim=True)
-            print('v shape: {}'.format(v.size()))
+            # print('v shape: {}'.format(v.size()))
             # logs = (self.scale / (v.sqrt() + self.epsilon)).log()
             logs = torch.log(self.scale / (torch.sqrt(v) + 1e-6))
 
@@ -68,8 +68,8 @@ class ActivationNormalisation(nn.Module):
             self.is_initialised = True
     
     def _center(self, x, reverse=False):
-        print('act norm centre input size: {}'.format(x.size()))
-        print('self bias shape in centre: {}'.format(self.bias.size()))
+        # print('act norm centre input size: {}'.format(x.size()))
+        # print('self bias shape in centre: {}'.format(self.bias.size()))
         
         if not reverse:
             return x + self.bias

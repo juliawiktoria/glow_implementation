@@ -14,6 +14,8 @@ class _FlowStep(nn.Module):
     def __init__(self, in_channels, mid_channels):
         super(_FlowStep, self).__init__()
 
+        print('initialising flow step with {} in channels.'.format(in_channels))
+
         # define transforms; hardcoded, not a framework for creating own models with different transforms
         self.normalisation = ActivationNormalisation(in_channels)
         self.convolution = InvertedConvolution(in_channels)
