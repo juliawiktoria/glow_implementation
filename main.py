@@ -22,7 +22,7 @@ from flows import *
 # enablig grad for loss calc
 # @torch.no_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
-    print("\t-> TEST")
+    print("\t-> TRAIN")
     # global global_step
     # initialising training mode; just so the model "knows" it is training
     model.train()
@@ -58,7 +58,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
 @torch.no_grad()
 def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best_loss, args):
-    print("\t-> TRAIN")
+    print("\t-> TEST")
     # setting a flag for indicating if this epoch is best ever
     best = False
 

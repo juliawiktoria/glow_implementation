@@ -62,6 +62,7 @@ class _GlowLevel(nn.Module):
             # print('after squeeze: {}'.format(x.size()))
             # 2. apply K flow steps [transform1, transform2, transform3]
             for step in self.steps:
+                print(step.__class__.__name__)
                 x, log_det_jacobian = step(x, log_det_jacobian, reverse)
             print('\t\t\t\t -> after steps: {}'.format(x.size()))
 
@@ -78,6 +79,7 @@ class _GlowLevel(nn.Module):
 
             # 2. apply K steps [transform3, transform2, transform1] - reversed order
             for step in reversed(self.steps):
+                print(step.__class__.__name__)
                 x, log_det_jacobian = step(x, log_det_jacobian, reverse)
             print('\t\t\t\t -> after steps: {}'.format(x.size()))
 
