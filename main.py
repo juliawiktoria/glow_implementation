@@ -88,7 +88,7 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
         images = sample(model, device, args)
         path_to_images = 'samples/epoch_' + str(epoch) # custom name for each epoch
         save_grid = epoch % args.grid_interval == 0
-        save_sampled_images(epoch, images, path_to_images, if_grid=save_grid)
+        save_sampled_images(epoch, images, args.num_samples,  path_to_images, if_grid=save_grid)
     return best_loss
 
 if __name__ == '__main__':
