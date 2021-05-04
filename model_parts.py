@@ -26,9 +26,11 @@ class InvertedConvolution(nn.Module):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
 
         if reverse:
+            print("\t\t\t\t\t -> inv conv reverse pass")
             weights = torch.inverse(self.weights.double()).float()
             sldj = sldj - lower_det_jacobian
         else:
+            print("\t\t\t\t\t -> inv conv forward pass")
             weights = self.weights
             sldj = sldj + lower_det_jacobian
 
@@ -88,11 +90,11 @@ class ActivationNormalisation(nn.Module):
             self.init_params(x)
         
         if reverse:
-            # print("act norm reverse pass")
+            print("\t\t\t\t\t -> act norm reverse pass")
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
             x = self._center(x, reverse)
         else:
-            # print('act norm forward pass')
+            print("\t\t\t\t\t -> act norm forward pass")
             x = self._center(x, reverse)
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
         
@@ -155,13 +157,14 @@ class AffineCoupling(nn.Module):
 
         # Scale and translate
         if not reverse:
+            print('\t\t\t\t\t -> affine coupling forward pass')
             x_change = (x_change + t) * s.exp()
             lower_det_jacobian = lower_det_jacobian + s.flatten(1).sum(-1)
         else:
-            # print('AFFINE COUPLING REVERSE PASS')
-            # print('st shape: {}'.format(st.size()))
-            # print('x_change shape: {}\tx_id shape: {}'.format(x_change.size(), x_id.size()))
-            # print('s        shape: {}\tt    shape: {}'.format(s.size(), t.size()))
+            print('\t\t\t\t\t -> affine coupling reverse pass')
+            print('\t\t\t\t\tst shape: {}'.format(st.size()))
+            print('\t\t\t\t\tx_change shape: {}\tx_id shape: {}'.format(x_change.size(), x_id.size()))
+            print('\t\t\t\t\ts        shape: {}\tt    shape: {}'.format(s.size(), t.size()))
             x_change = x_change * s.mul(-1).exp() - t
             lower_det_jacobian = lower_det_jacobian - s.flatten(1).sum(-1)
 
