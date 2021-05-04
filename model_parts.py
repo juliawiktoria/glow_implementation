@@ -54,11 +54,11 @@ class ActivationNormalisation(nn.Module):
 
     def init_params(self, x):
         with torch.no_grad():
-            # bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
-            bias = -torch.mean(x.clone(), dim=[0, 2, 3], keepdim=True)
+            bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
+            # bias = -torch.mean(x.clone(), dim=[0, 2, 3], keepdim=True)
             # print('biaas shape: {}'.format(bias.size()))
-            # v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
-            v = torch.mean((x.clone() + bias) ** 2, dim=[0, 2, 3], keepdim=True)
+            v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
+            # v = torch.mean((x.clone() + bias) ** 2, dim=[0, 2, 3], keepdim=True)
             # print('v shape: {}'.format(v.size()))
             # logs = (self.scale / (v.sqrt() + self.epsilon)).log()
             logs = torch.log(self.scale / (torch.sqrt(v) + 1e-6))
@@ -132,7 +132,6 @@ class CNN(nn.Module):
         nn.init.zeros_(self.out_conv.bias)
 
     def forward(self, x):
-        # print('====CNN PASS====')
         x, _ = self.in_norm(x)
         x = F.relu(x)
         x = self.in_conv(x)
@@ -148,7 +147,6 @@ class CNN(nn.Module):
         x, _ = self.out_norm(x)
         x = F.relu(x)
         x = self.out_conv(x)
-        # print('====CNN END====')
         return x
 
 class AffineCoupling(nn.Module):
@@ -189,14 +187,12 @@ class Squeeze(nn.Module):
         # get input dimensions
         b, c, h, w = x.size()
         if not reverse:
-            # print('squeeze forward')
             # squeeze
             x = x.view(b, c, h //2, 2, w //2, 2)
             x = x.permute(0, 1, 3, 5, 2, 4).contiguous()
             x = x.view(b, c * 2 * 2, h // 2, w // 2)
             # output shape: (b, 4c, h/2, w/2)
         else:
-            # print('squeeze reverse')
             # unsqueeze
             x = x.view(b, c // 4, 2, 2, h, w)
             x = x.permute(0, 1, 4, 2, 5, 3).contiguous()
