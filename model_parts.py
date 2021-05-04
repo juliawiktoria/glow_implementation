@@ -42,46 +42,53 @@ class InvertedConvolution(nn.Module):
 class ActivationNormalisation(nn.Module):
     def __init__(self, num_features, scale=1.):
         super(ActivationNormalisation, self).__init__()
-        self.register_buffer('is_initialised', torch.zeros(1))
+        # self.register_buffer('is_initialised', torch.zeros(1))
         self.bias = nn.Parameter(torch.zeros(1, num_features, 1, 1))
         self.logs = nn.Parameter(torch.zeros(1, num_features, 1, 1))
-        
+        self.is_initialised = False
+
         self.num_features = num_features
         self.scale = float(scale)
         self.epsilon = 1e-6
 
     def init_params(self, x):
         with torch.no_grad():
-            bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
-            # print('biaas shape: {}'.format(bias.size()))
-            v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
-            # print('v shape: {}'.format(v.size()))
-            logs = (self.scale / (v.sqrt() + self.epsilon)).log()
+            # bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
+            bias = -torch.mean(input.clone(), dim=[0, 2, 3], keepdim=True)
+            print('biaas shape: {}'.format(bias.size()))
+            # v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
+            v = torch.mean((input.clone() + bias) ** 2, dim=[0, 2, 3], keepdim=True)
+            print('v shape: {}'.format(v.size()))
+            # logs = (self.scale / (v.sqrt() + self.epsilon)).log()
+            logs = torch.log(self.scale / (torch.sqrt(vars) + 1e-6))
 
             self.bias.data.copy_(bias.data)
             self.logs.data.copy_(logs.data)
-            self.is_initialised += 1
+            self.is_initialised = True
     
     def _center(self, x, reverse=False):
-        if reverse:
-            return x - self.bias
-        else:
+        print('act norm centre input size: {}'.format(x.size()))
+        print('sef bias shape: {}'.format(self.bias.size()))
+        
+        if not reverse:
             return x + self.bias
+        else:
+            return x - self.bias
 
     def _scale(self, x, sldj, reverse=False):
         logs = self.logs
 
-        if reverse:
-            x = x * logs.mul(-1).exp()
-        else:
+        if not reverse:
             x = x * logs.exp()
+        else:
+            x = x * logs.mul(-1).exp()
         
         if sldj is not None:
             lower_det_jacobian = logs.sum() * x.size(2) * x.size(3)
-            if reverse:
-                sldj = sldj - lower_det_jacobian
-            else:
+            if not reverse:
                 sldj = sldj + lower_det_jacobian
+            else:
+                sldj = sldj - lower_det_jacobian
         
         return x, sldj
     
@@ -89,14 +96,14 @@ class ActivationNormalisation(nn.Module):
         if not self.is_initialised:
             self.init_params(x)
         
-        if reverse:
-            print("\t\t\t\t\t -> act norm reverse pass")
-            x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
-            x = self._center(x, reverse)
-        else:
+        if not reverse:
             print("\t\t\t\t\t -> act norm forward pass")
             x = self._center(x, reverse)
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
+        else:
+            print("\t\t\t\t\t -> act norm reverse pass")
+            x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
+            x = self._center(x, reverse)
         
         return x, lower_det_jacobian
 
