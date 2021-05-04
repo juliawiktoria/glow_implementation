@@ -26,11 +26,11 @@ class InvertedConvolution(nn.Module):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
 
         if reverse:
-            print("\t\t\t\t\t -> inv conv reverse pass")
+            # print("\t\t\t\t\t -> inv conv reverse pass")
             weights = torch.inverse(self.weights.double()).float()
             sldj = sldj - lower_det_jacobian
         else:
-            print("\t\t\t\t\t -> inv conv forward pass")
+            # print("\t\t\t\t\t -> inv conv forward pass")
             weights = self.weights
             sldj = sldj + lower_det_jacobian
 
@@ -45,6 +45,7 @@ class ActivationNormalisation(nn.Module):
         # self.register_buffer('is_initialised', torch.zeros(1))
         self.bias = nn.Parameter(torch.zeros(1, num_features, 1, 1))
         self.logs = nn.Parameter(torch.zeros(1, num_features, 1, 1))
+        print('sizes in init act norm: bias [{}], vars [{}]'.format(self.bias.size(), self.logs.size()))
         self.is_initialised = False
 
         self.num_features = num_features
@@ -68,7 +69,7 @@ class ActivationNormalisation(nn.Module):
     
     def _center(self, x, reverse=False):
         print('act norm centre input size: {}'.format(x.size()))
-        print('sef bias shape: {}'.format(self.bias.size()))
+        print('self bias shape in centre: {}'.format(self.bias.size()))
         
         if not reverse:
             return x + self.bias
@@ -97,11 +98,11 @@ class ActivationNormalisation(nn.Module):
             self.init_params(x)
         
         if not reverse:
-            print("\t\t\t\t\t -> act norm forward pass")
+            # print("\t\t\t\t\t -> act norm forward pass")
             x = self._center(x, reverse)
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
         else:
-            print("\t\t\t\t\t -> act norm reverse pass")
+            # print("\t\t\t\t\t -> act norm reverse pass")
             x, lower_det_jacobian = self._scale(x, lower_det_jacobian, reverse)
             x = self._center(x, reverse)
         
@@ -131,7 +132,7 @@ class CNN(nn.Module):
         nn.init.zeros_(self.out_conv.bias)
 
     def forward(self, x):
-        print('====CNN PASS====')
+        # print('====CNN PASS====')
         x, _ = self.in_norm(x)
         x = F.relu(x)
         x = self.in_conv(x)
@@ -147,7 +148,7 @@ class CNN(nn.Module):
         x, _ = self.out_norm(x)
         x = F.relu(x)
         x = self.out_conv(x)
-        print('====CNN END====')
+        # print('====CNN END====')
         return x
 
 class AffineCoupling(nn.Module):
@@ -165,14 +166,14 @@ class AffineCoupling(nn.Module):
 
         # Scale and translate
         if not reverse:
-            print('\t\t\t\t\t -> affine coupling forward pass')
+            # print('\t\t\t\t\t -> affine coupling forward pass')
             x_change = (x_change + t) * s.exp()
             lower_det_jacobian = lower_det_jacobian + s.flatten(1).sum(-1)
         else:
-            print('\t\t\t\t\t -> affine coupling reverse pass')
-            print('\t\t\t\t\tst shape: {}'.format(st.size()))
-            print('\t\t\t\t\tx_change shape: {}\tx_id shape: {}'.format(x_change.size(), x_id.size()))
-            print('\t\t\t\t\ts        shape: {}\tt    shape: {}'.format(s.size(), t.size()))
+            # print('\t\t\t\t\t -> affine coupling reverse pass')
+            # print('\t\t\t\t\tst shape: {}'.format(st.size()))
+            # print('\t\t\t\t\tx_change shape: {}\tx_id shape: {}'.format(x_change.size(), x_id.size()))
+            # print('\t\t\t\t\ts        shape: {}\tt    shape: {}'.format(s.size(), t.size()))
             x_change = x_change * s.mul(-1).exp() - t
             lower_det_jacobian = lower_det_jacobian - s.flatten(1).sum(-1)
 
