@@ -54,30 +54,36 @@ class _GlowLevel(nn.Module):
     def forward(self, x, log_det_jacobian, reverse=False, temp=None):
         # normal forward pass when reverse == False
         if not reverse:
+            print('\t\t\t -> level forward with input size: {}'.format(x.size()))
             # print('input forward: {}'.format(x.size()))
             # 1. squeeze
             x = self.squeeze(x, reverse)
+            print('\t\t\t\t -> after squeeze: {}'.format(x.size()))
             # print('after squeeze: {}'.format(x.size()))
             # 2. apply K flow steps [transform1, transform2, transform3]
             for step in self.steps:
                 x, log_det_jacobian = step(x, log_det_jacobian, reverse)
+            print('\t\t\t\t -> after steps: {}'.format(x.size()))
 
             if self.if_split:
                 x, log_det_jacobian = self.split(x, reverse)
+                print('\t\t\t\t -> after split: {}'.format(x.size()))
             # print('after split: {}'.format(x.size()))
         # reverse pass when reverse == True
         else:
+            print('\t\t\t -> level reverse with input size: {}'.format(x.size()))
             if self.if_split:
                 x, log_det_jacobian = self.split(x, log_det_jacobian, reverse, temperature=temp)
-            # print('after split: {}'.format(x.size()))
+                print('\t\t\t\t -> after un-split: {}'.format(x.size()))
 
             # 2. apply K steps [transform3, transform2, transform1] - reversed order
             for step in reversed(self.steps):
                 x, log_det_jacobian = step(x, log_det_jacobian, reverse)
+            print('\t\t\t\t -> after steps: {}'.format(x.size()))
 
             # 3. un-squeeze
             x = self.squeeze(x, reverse)
-            # print('after unsqueeze: {}'.format(x.size()))
+            print('\t\t\t\t -> after un-squeeze: {}'.format(x.size()))
         
         return x, log_det_jacobian
 
@@ -129,13 +135,13 @@ class GlowModel(nn.Module):
     def forward(self, x, reverse=False, temp=None):
         # defining first log_det for the forward pass
         if not reverse:
-            # print('model forward')
+            print('\t\t-> model forward')
             if x.min() < 0 or x.max() > 1:
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
             x, log_det_jacobian = self._pre_process(x)
         # defining first log_det for thereverse pass
         else:
-            # print('model reverse')    
+            print('\t\t-> model reverse') 
             log_det_jacobian = torch.zeros(x.size(0), device=x.device)
             # reverse the ordering of the levels do the no-split level is the first one now
             self.levels = self.levels[::-1]
