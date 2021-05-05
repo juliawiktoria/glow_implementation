@@ -162,7 +162,7 @@ class GlowModel(nn.Module):
             # print('\t\t-> model reverse') 
             log_det_jacobian = torch.zeros(x.size(0), device=x.device)
             # reverse the ordering of the levels do the no-split level is the first one now
-            self.levels = self.levels[::-1]
+            self.reversed_levels = self.levels[::-1]
         # pass the input through all the glow levels iteratively
         # each block solves the direction of the pass within itself
         for level in self.levels:
