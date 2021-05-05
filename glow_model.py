@@ -123,10 +123,11 @@ class GlowModel(nn.Module):
         self.levels = nn.ModuleList()
         self.create_levels()
 
-    def describe_self(self):
-        print('GLOW MODEL')
+    def describe(self):
+        print('==============GLOW MODEL============')
         for level in self.levels:
             level.describe()
+        print('====================================')
 
     def create_levels(self):
         # creates nn.ModuleList of all levels of the flow`

@@ -24,6 +24,7 @@ from tqdm import tqdm
 @torch.enable_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
     print("\t-> TRAIN")
+    model.describe()
     # global global_step
     # initialising training mode; just so the model "knows" it is training
     model.train()
