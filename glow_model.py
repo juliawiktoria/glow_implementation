@@ -56,7 +56,7 @@ class _GlowLevel(nn.Module):
         self.squeeze = Squeeze()
         # create K steps of the flow K x ([t,t,t]) where t is a flow transform
         # channels (features) are multiplied by 4 to account for squeeze operation that takes place before flow steps
-        self.steps = nn.ModuleList([_FlowStep(in_channels=num_features * 4, hid_layers=hid_layers, step_num=i+1) for i in range(num_steps)])
+        self.steps = nn.ModuleList([_FlowStep(num_features=num_features * 4, hid_layers=hid_layers, step_num=i+1) for i in range(num_steps)])
         # split operation is not performed in the last forward level (in the first when reversed)
         self.if_split = if_split
         self.split = Split2d(num_features * 4)
@@ -142,10 +142,10 @@ class GlowModel(nn.Module):
         # creates nn.ModuleList of all levels of the flow`
         # first (L - 1) levels include splitting
         for i in range(self.num_levels - 1):
-            self.levels.append(_GlowLevel(in_channels=self.num_features, mid_channels=self.hid_layers, num_steps=self.num_steps, lvl_num=i+1))
+            self.levels.append(_GlowLevel(num_features=self.num_features, hid_layers=self.hid_layers, num_steps=self.num_steps, lvl_num=i+1))
             self.in_channels *= 2
         # last layer without the split part
-        self.levels.append(_GlowLevel(in_channels=self.num_features, mid_channels=self.hid_layers, num_steps=self.num_steps, lvl_num=self.num_levels, if_split=False))
+        self.levels.append(_GlowLevel(num_features=self.num_features, hid_layers=self.hid_layers, num_steps=self.num_steps, lvl_num=self.num_levels, if_split=False))
     
     def _pre_process(self, x):
         # pre-process input
