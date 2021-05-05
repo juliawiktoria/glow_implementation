@@ -123,7 +123,7 @@ class GlowModel(nn.Module):
         self.register_buffer('bounds', torch.tensor([0.9], dtype=torch.float32))
 
         # computes the size of the output tensor so it can be used to generate input for the reverse model
-        self.out_channels = self.num_features * (2 ** (num_levels + 1))
+        self.out_features = self.num_features * (2 ** (num_levels + 1))
         self.out_height = int(self.in_height // (2 ** (num_levels)))
         self.out_width = int(self.in_width // (2 ** (num_levels)))
 
@@ -143,7 +143,7 @@ class GlowModel(nn.Module):
         # first (L - 1) levels include splitting
         for i in range(self.num_levels - 1):
             self.levels.append(_GlowLevel(num_features=self.num_features, hid_layers=self.hid_layers, num_steps=self.num_steps, lvl_num=i+1))
-            self.in_channels *= 2
+            self.num_features *= 2
         # last layer without the split part
         self.levels.append(_GlowLevel(num_features=self.num_features, hid_layers=self.hid_layers, num_steps=self.num_steps, lvl_num=self.num_levels, if_split=False))
     
