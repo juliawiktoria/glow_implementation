@@ -163,6 +163,7 @@ class CNN(nn.Module):
 class AffineCoupling(nn.Module):
     def __init__(self, in_channels, mid_channels):
         super(AffineCoupling, self).__init__()
+        self.in_channels = in_channels
         self.cnn = CNN(in_channels, mid_channels, in_channels * 2)
         self.scale = nn.Parameter(torch.ones(in_channels, 1, 1))
 
