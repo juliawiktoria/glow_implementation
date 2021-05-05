@@ -13,17 +13,17 @@ import torch.backends.cudnn as cudnn
 import utilities
 
 class InvertedConvolution(nn.Module):
-    def __init__(self, num_channels, lu_decomp=False):
+    def __init__(self, num_features, lu_decomp=False):
         super(InvertedConvolution, self).__init__()
-        self.num_channels = num_channels
+        self.num_features = num_features
 
-        w_init = np.random.randn(num_channels, num_channels)
+        w_init = np.random.randn(num_features, num_features)
         w_init = np.linalg.qr(w_init)[0].astype(np.float32)
         self.weights = nn.Parameter(torch.from_numpy(w_init))
         self.lu_decomp = lu_decomp
 
     def describe(self):
-        print('\t\t\t - > Inv Conv with {} num_channels'.format(self.num_channels))
+        print('\t\t\t - > Inv Conv with {} num_features'.format(self.num_features))
 
     def forward(self, x, sldj, reverse=False):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
@@ -37,7 +37,7 @@ class InvertedConvolution(nn.Module):
             weights = self.weights
             sldj = sldj + lower_det_jacobian
 
-        weights = weights.view(self.num_channels, self.num_channels, 1, 1)
+        weights = weights.view(self.num_features, self.num_features, 1, 1)
         z = F.conv2d(x, weights)
 
         return z, sldj
@@ -56,7 +56,7 @@ class ActivationNormalisation(nn.Module):
         self.epsilon = 1e-6
 
     def describe(self):
-        print('\t\t\t - > Act Norm with {} num_channels; bias: {}; logs: {}'.format(self.num_features, self.bias.size(), self.logs.size()))
+        print('\t\t\t - > Act Norm with {} num_features; bias: {}; logs: {}'.format(self.num_features, self.bias.size(), self.logs.size()))
     
     def init_params(self, x):
         with torch.no_grad():
@@ -116,59 +116,59 @@ class ActivationNormalisation(nn.Module):
 
 class CNN(nn.Module):
     # cnn for affine coupling layer with an extra hidden layer
-    def __init__(self, in_channels, mid_channels, out_channels):
+    def __init__(self, num_features, hid_layers, out_channels):
         super(CNN, self).__init__()
-        # norm_function = ActivationNormalisation
-        norm_function = nn.BatchNorm2d
+        norm_function = ActivationNormalisation
+        # norm_function = nn.BatchNorm2d
 
-        self.in_norm = norm_function(in_channels)
-        self.in_conv = nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
+        self.in_norm = norm_function(num_features)
+        self.in_conv = nn.Conv2d(num_features, hid_layers, kernel_size=3, padding=1, bias=False)
         nn.init.normal_(self.in_conv.weight, 0., 0.05)
 
-        self.mid_norm = norm_function(mid_channels)
-        self.mid_conv = nn.Conv2d(mid_channels, mid_channels, kernel_size=1, padding=0, bias=False)
+        self.mid_norm = norm_function(hid_layers)
+        self.mid_conv = nn.Conv2d(hid_layers, hid_layers, kernel_size=1, padding=0, bias=False)
         nn.init.normal_(self.mid_conv.weight, 0., 0.05)
 
-        self.mid_norm_2 = norm_function(mid_channels)
-        self.mid_conv_2 = nn.Conv2d(mid_channels, mid_channels, kernel_size=1, padding=0, bias=False)
+        self.mid_norm_2 = norm_function(hid_layers)
+        self.mid_conv_2 = nn.Conv2d(hid_layers, hid_layers, kernel_size=1, padding=0, bias=False)
         nn.init.normal_(self.mid_conv_2.weight, 0., 0.05)
 
-        self.out_norm = norm_function(mid_channels)
-        self.out_conv = nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=True)
+        self.out_norm = norm_function(hid_layers)
+        self.out_conv = nn.Conv2d(hid_layers, out_channels, kernel_size=3, padding=1, bias=True)
         nn.init.zeros_(self.out_conv.weight)
         nn.init.zeros_(self.out_conv.bias)
 
     def forward(self, x):
-        x = self.in_norm(x)
-        # x, _ = self.in_norm(x)
+        # x = self.in_norm(x)
+        x, _ = self.in_norm(x)
         x = F.relu(x)
         x = self.in_conv(x)
 
-        x = self.mid_norm(x)
-        # x, _ = self.mid_norm(x)
+        # x = self.mid_norm(x)
+        x, _ = self.mid_norm(x)
         x = F.relu(x)
         x = self.mid_conv(x)
 
-        x = self.mid_norm_2(x)
-        # x, _ = self.mid_norm_2(x)
+        # x = self.mid_norm_2(x)
+        x, _ = self.mid_norm_2(x)
         x = F.relu(x)
         x = self.mid_conv_2(x)
 
-        x = self.out_norm(x)
-        # x, _ = self.out_norm(x)
+        # x = self.out_norm(x)
+        x, _ = self.out_norm(x)
         x = F.relu(x)
         x = self.out_conv(x)
         return x
 
 class AffineCoupling(nn.Module):
-    def __init__(self, in_channels, mid_channels):
+    def __init__(self, num_features, hid_layers):
         super(AffineCoupling, self).__init__()
-        self.in_channels = in_channels
-        self.cnn = CNN(in_channels, mid_channels, in_channels * 2)
-        self.scale = nn.Parameter(torch.ones(in_channels, 1, 1))
+        self.num_features = num_features
+        self.cnn = CNN(num_features, hid_layers, num_features * 2)
+        self.scale = nn.Parameter(torch.ones(num_features, 1, 1))
 
     def describe(self):
-        print('\t\t\t - > Aff Coupling with {} in_channels'.format(self.in_channels))
+        print('\t\t\t - > Aff Coupling with {} num_features'.format(self.num_features))
     
     def forward(self, x, lower_det_jacobian, reverse=False):
         x_change, x_id = x.chunk(2, dim=1)
@@ -179,14 +179,9 @@ class AffineCoupling(nn.Module):
 
         # Scale and translate
         if not reverse:
-            # print('\t\t\t\t\t -> affine coupling forward pass')
             x_change = (x_change + t) * s.exp()
             lower_det_jacobian = lower_det_jacobian + s.flatten(1).sum(-1)
         else:
-            # print('\t\t\t\t\t -> affine coupling reverse pass')
-            # print('\t\t\t\t\tst shape: {}'.format(st.size()))
-            # print('\t\t\t\t\tx_change shape: {}\tx_id shape: {}'.format(x_change.size(), x_id.size()))
-            # print('\t\t\t\t\ts        shape: {}\tt    shape: {}'.format(s.size(), t.size()))
             x_change = x_change * s.mul(-1).exp() - t
             lower_det_jacobian = lower_det_jacobian - s.flatten(1).sum(-1)
 
@@ -265,9 +260,9 @@ class Conv2dZeros(nn.Module):
 
 # https://github.com/y0ast/Glow-PyTorch/blob/dda8e6762bb025d27f1bb70655bc4dc86f8d619f/modules.py#L273
 class Split2d(nn.Module):
-    def __init__(self, num_channels):
+    def __init__(self, num_features):
         super().__init__()
-        self.conv = Conv2dZeros(num_channels // 2, num_channels)
+        self.conv = Conv2dZeros(num_features // 2, num_features)
 
     def split2d_prior(self, z):
         h = self.conv(z)
