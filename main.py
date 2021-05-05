@@ -24,8 +24,6 @@ from tqdm import tqdm
 @torch.enable_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
     print("\t-> TRAIN")
-    model.describe()
-    # global global_step
     # initialising training mode; just so the model "knows" it is training
     model.train()
     # initialising counter for loss calculations
@@ -54,9 +52,8 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
                                     lr=optimizer.param_groups[0]['lr'])
             progress_bar.update(x.size(0))
 
+            # updating the global step using the batch size used for training
             global_step += x.size(0)
-    # model.describe()
-    # print('output dimensions: {}'.format(z.size()))
     return global_step
 
 @torch.no_grad()
@@ -64,7 +61,6 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
     print("\t-> TEST")
     # setting a flag for indicating if this epoch is best ever
     best = False
-    # model.describe()
     model.eval()
     loss_meter = AvgMeter()
 
@@ -84,14 +80,14 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
     if epoch % args.ckpt_interval == 0:
         print('Saving checkpoint file from the epoch #{}'.format(epoch))
         save_model_checkpoint(model, epoch, optimizer, scheduler, loss_meter.avg, best)
-    # model.describe()
+
     # Save samples and data on the specified interval
     if epoch % args.img_interval == 0:
         print("saving images from the epoch #{}".format(epoch))
         images = sample(model, device, args)
         path_to_images = 'samples/epoch_' + str(epoch) # custom name for each epoch
         save_grid = epoch % args.grid_interval == 0
-        save_sampled_images(epoch, images, args.num_samples,  path_to_images, if_grid=save_grid)
+        save_sampled_images(epoch, images, args.num_samples, path_to_images, if_grid=save_grid)
     # model.describe()
     return best_loss
 
@@ -102,7 +98,7 @@ if __name__ == '__main__':
     
     # model parameters
     parser.add_argument('--model', type=str, default='glow', help='Name of the model in use.')
-    parser.add_argument('--num_channels', type=int, default=256, help='Number of channels.')
+    parser.add_argument('--hidden_layers', type=int, default=256, help='Number of channels.')
     parser.add_argument('--num_levels', type=int, default=2, help='Number of flow levels.')
     parser.add_argument('--num_steps', type=int, default=4, help='Number of flow steps.')
     # optimizer and scheduler parameters
@@ -125,6 +121,10 @@ if __name__ == '__main__':
     parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
     parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
     parser.add_argument('--grid_interval', type=int, default=1, help='How often to save images in a nice grid.')
+    # image params 
+    parser.add_argument('--num_features', type=int, default=3, help='Number of spatial channels of an image [cifar10: 3 / mnist: 1].')
+    parser.add_argument('--img_height', type=int, default=32, help='Image height in pixels [cifar10: 32 / mnist: 28]')
+    parser.add_argument('--img_width', type=int, default=32, help='Image width in pixels [cifar10: 32 / mnist: 28]')
 
     # python main.py --epochs 10 --download
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
     
     # define the model
     if args.model == 'glow':
-        model = GlowModel(args.num_channels, args.num_levels, args.num_steps)
+        model = GlowModel(args.num_features, args.hidden_layers, args.num_levels, args.num_steps, args.img_height, args.img_width)
         model = model.to(device)
 
     # optimizer takes care of updating the parameters of the model after each batch
@@ -214,5 +214,5 @@ if __name__ == '__main__':
         save_sampled_images(starting_epoch, images, args.num_samples, path_to_images, if_grid=True)
     # incorrect mode
     else:
-        model.describe_self()
+        model.describe()
         sys.exit('Incorrect usage mode! Try --usage_mode train/sample')
