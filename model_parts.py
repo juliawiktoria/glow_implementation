@@ -22,6 +22,9 @@ class InvertedConvolution(nn.Module):
         self.weights = nn.Parameter(torch.from_numpy(w_init))
         self.lu_decomp = lu_decomp
 
+    def describe(self):
+        print('\t\t\t - > Inv Conv with {} num_channels'.format(self.num_channels))
+
     def forward(self, x, sldj, reverse=False):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
 
@@ -52,6 +55,9 @@ class ActivationNormalisation(nn.Module):
         self.scale = float(scale)
         self.epsilon = 1e-6
 
+    def describe(self):
+        print('\t\t\t - > Act Norm with {} num_channels; bias: {}; logs: {}'.format(self.num_features, self.bias.size(), self.logs.size()))
+    
     def init_params(self, x):
         with torch.no_grad():
             bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
@@ -159,6 +165,9 @@ class AffineCoupling(nn.Module):
         super(AffineCoupling, self).__init__()
         self.cnn = CNN(in_channels, mid_channels, in_channels * 2)
         self.scale = nn.Parameter(torch.ones(in_channels, 1, 1))
+
+    def describe(self):
+        print('\t\t\t - > Aff Coupling with {} in_channels'.format(self.in_channels))
     
     def forward(self, x, lower_det_jacobian, reverse=False):
         x_change, x_id = x.chunk(2, dim=1)
