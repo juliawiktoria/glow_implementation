@@ -63,9 +63,12 @@ class _GlowLevel(nn.Module):
 
     def describe(self):
         print('\t - > Level {}'.format(self.lvl_id))
+        print('\t\t - > Squeeze layer')
         for step in self.steps:
             step.describe()
-
+        if self.if_split:
+            print('\t\t - > Split layer')
+    
     def forward(self, x, log_det_jacobian, reverse=False, temp=None):
         # normal forward pass when reverse == False
         if not reverse:

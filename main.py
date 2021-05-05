@@ -148,6 +148,9 @@ if __name__ == '__main__':
         model = GlowModel(args.num_features, args.hidden_layers, args.num_levels, args.num_steps, args.img_height, args.img_width)
         model = model.to(device)
 
+    print('The model has been created. It looks like this:\n')
+    model.describe()
+
     # optimizer takes care of updating the parameters of the model after each batch
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     # scheduler takes care of the adjustment of the learning rate
