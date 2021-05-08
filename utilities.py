@@ -96,13 +96,13 @@ def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, 
             images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
             torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
 
-def save_model_checkpoint(model, epoch, optimizer, scheduler, avg_loss, best=False):
+def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_loss, best=False):
   # just overwrite a file to know which checkpoint is the best
     if best:
-        with open('best_checkpoint.txt', 'w') as file:
+        with open('best_{}_checkpoint.txt'.format(dataset_name), 'w') as file:
           file.write('Epoch with the best loss: {}'.format(epoch))
     # saving model in the current epoch to a file
-    file_name = "checkpoint_epoch_{}.pth".format(epoch)
+    file_name = "{}_checkpoint_epoch_{}.pth".format(dataset_name, epoch)
     torch.save({'epoch': epoch,
                 'state_dict': model.state_dict(),
                 'test_loss': avg_loss,

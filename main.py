@@ -79,7 +79,7 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
         
     if epoch % args.ckpt_interval == 0:
         print('Saving checkpoint file from the epoch #{}'.format(epoch))
-        save_model_checkpoint(model, epoch, optimizer, scheduler, loss_meter.avg, best)
+        save_model_checkpoint(model, epoch, args.dataset, optimizer, scheduler, loss_meter.avg, best)
 
     # Save samples and data on the specified interval
     if epoch % args.img_interval == 0:
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     elif args.usage_mode == 'sample':
         print('sampling')
         images = sample(model, device, args)
-        path_to_images = 'samples/epoch_' + str(starting_epoch) # custom name for each epoch
+        path_to_images = 'samples/{}/epoch_{}'.format(args.dataset, starting_epoch) # custom name for each epoch
         save_sampled_images(starting_epoch, images, args.num_samples, path_to_images, if_grid=True)
     # incorrect mode
     else:
