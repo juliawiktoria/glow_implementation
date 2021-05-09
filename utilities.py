@@ -63,7 +63,7 @@ def mean_over_dimensions(tensor, dim=None, keepdims=False):
         return tensor
 
 # clipping gradient norm to avoid exploding gradients
-def clip_grad_norm(optimizer, max_norm, norm_type=2):
+def clip_gradient_norm(optimizer, max_norm, norm_type=2):
     for group in optimizer.param_groups:
         utils.clip_grad_norm(group['params'], max_norm, norm_type)
 

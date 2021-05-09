@@ -29,6 +29,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     # initialising counter for loss calculations
     loss_meter = AvgMeter()
 
+    # fancy progress bar
     with tqdm(total=len(trainloader.dataset)) as progress_bar:
         for x, _ in trainloader:
             x = x.to(device)
@@ -42,7 +43,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
             # clip gradient if too much
             if max_grad_norm > 0:
-                clip_grad_norm(optimizer, max_grad_norm)
+                clip_gradient_norm(optimizer, max_grad_norm)
 
             # advance optimizer and scheduler and update parameters
             optimizer.step()
@@ -66,7 +67,6 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
 
     for x, _ in testloader:
         x = x.to(device)
-        # print('x size in testing function: {}'.format(x.size()))
         z, sldj = model(x, reverse=False)
         loss = loss_func(z, sldj)
         loss_meter.update(loss.item(), x.size(0))
@@ -74,21 +74,26 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
     if loss_meter.avg < best_loss:
         print('Updating best loss: [{}] -> [{}]'.format(best_loss, loss_meter.avg))
         best_loss = loss_meter.avg
-        # indicating this epoch has achieved the best loss value
+        # indicating this epoch has achieved the best loss value so far
         best = True
-        
+    
+    # save checkpoint file on interval
     if epoch % args.ckpt_interval == 0:
         print('Saving checkpoint file from the epoch #{}'.format(epoch))
         save_model_checkpoint(model, epoch, args.dataset, optimizer, scheduler, loss_meter.avg, best)
 
     # Save samples and data on the specified interval
     if epoch % args.img_interval == 0:
-        print("saving images from the epoch #{}".format(epoch))
+        print("Saving images from the epoch #{}".format(epoch))
+
+        # getting a sample of n images
         images = sample(model, device, args)
-        path_to_images = 'samples/epoch_' + str(epoch) # custom name for each epoch
+        # creating a path to an epoch directory so the images are sorted by epoch
+        path_to_images = 'samples/epoch_' + str(epoch)
+        # deciding if saving images to grid
         save_grid = epoch % args.grid_interval == 0
         save_sampled_images(epoch, images, args.num_samples, path_to_images, if_grid=save_grid)
-    # model.describe()
+
     return best_loss
 
 if __name__ == '__main__':
@@ -113,7 +118,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
     parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
     # dataset 
-    parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10'], help='Choose dataset: [mnist/cifar10]')
+    parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10', 'chest_xray'], help='Choose dataset: [mnist/cifar10/chest_xray]')
     parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for datasets.')
     parser.add_argument('--download', action='store_true', default=False, help='Flad indicating when a dataset should be downloaded.')
     # checkpointing and img saving
@@ -129,20 +134,28 @@ if __name__ == '__main__':
     # python main.py --epochs 10 --download
 
     args = parser.parse_args()
-
-    # initialising variables for keeping track of the global step and the best loss so far
-    best_loss = 0
-    global_step = 0
-
-    # create directory for checkpoint files 
-    # os.makedirs('checkpoints', exist_ok=True)
     
     # training on GPU if possible
     device = 'cuda' if torch.cuda.is_available() and not args.no_gpu else 'cpu'
 
     # get data for training according to the specified dataset name
     trainset, trainloader, testset, testloader = get_dataset(args.dataset, args.download, args.batch_size, args.num_workers)
-    
+
+    if args.dataset == 'cifar10':
+        args.num_features = 3
+        args.img_height = 32
+        args.img_width = 32
+    elif args.datase == 'mnist':
+        args.num_features = 1
+        args.img_height = 28
+        args.img_width = 28
+    elif args.dataset == 'chest_xray':
+        args.num_features = 3
+        args.img_height = 32
+        args.img_width = 32
+    else:
+        sys.exit('Incorrect dataset name')
+
     # define the model
     if args.model == 'glow':
         model = GlowModel(args.num_features, args.hidden_layers, args.num_levels, args.num_steps, args.img_height, args.img_width)
@@ -177,8 +190,9 @@ if __name__ == '__main__':
         print("resuming training from checkpoint file: {}".format(args.ckpt_path))
     else:
         # if training from scratch then init default values
+        # initialising variables for keeping track of the global step and the best loss so far
         global_step = 0
-        best_loss = 0
+        best_loss = math.inf
         starting_epoch = 1
 
     # run in training mode
