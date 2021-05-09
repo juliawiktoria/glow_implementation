@@ -46,7 +46,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
             # advance optimizer and scheduler and update parameters
             optimizer.step()
-            scheduler.step()
+            scheduler.step(global_step)
             progress_bar.set_postfix(nll=loss_meter.avg,
                                     bpd=bits_per_dimension(z, loss_meter.avg),
                                     lr=optimizer.param_groups[0]['lr'])
@@ -102,12 +102,12 @@ if __name__ == '__main__':
     parser.add_argument('--num_levels', type=int, default=2, help='Number of flow levels.')
     parser.add_argument('--num_steps', type=int, default=4, help='Number of flow steps.')
     # optimizer and scheduler parameters
-    parser.add_argument('--lr', type=float, default=1e-9, help='Learning rate for the optimizer.')
+    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate for the optimizer.')
     parser.add_argument('--grad_norm', type=float, default=-1, help="Maximum value of gradient.")
-    parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
+    parser.add_argument('--sched_warmup', type=int, default=500, help='Warm-up period for scheduler.')
     # training parameters
     parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
-    parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs.')
+    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs.')
     parser.add_argument('--resume_training', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
     parser.add_argument('--num_samples', type=int, default=32, help='Number of samples.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')

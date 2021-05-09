@@ -69,7 +69,8 @@ def clip_grad_norm(optimizer, max_norm, norm_type=2):
 
 # calculates bpd metric according to the definition
 def bits_per_dimension(x, nll):
-    dim = np.prod(x.size()[1:])
+    b, c, h, w = x.size()
+    dim = c * h * w
     bpd = nll / (np.log(2) * dim)
     return bpd
 
