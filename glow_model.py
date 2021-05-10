@@ -86,7 +86,7 @@ class _GlowLevel(nn.Module):
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
             
         if self.next_lvl is not None:
-            x = self.squeeze(x, reverse)
+            x = self.squeeze(x)
             x_1, x_2 = x.chunk(2, dim=1)
             x, sum_lower_det_jacobian = self.next_lvl(x_1, sum_lower_det_jacobian, reverse)
             x = torch.cat((x, x_2), dim=1)
