@@ -84,7 +84,7 @@ def clip_gradient_norm(optimizer, max_norm, norm_type=2):
 def sample(model, device, args):
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
     z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
-    print('z sample size: {}'.size())
+    print('z sample size: {}'.format(z.size()))
     # use the invertibility principle to get the sample
     imgs, _ = model(z, reverse=True)
     imgs = torch.sigmoid(imgs)
