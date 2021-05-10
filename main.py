@@ -160,6 +160,8 @@ if __name__ == '__main__':
     if args.model == 'glow':
         model = GlowModel(args.num_features, args.hidden_layers, args.num_levels, args.num_steps, args.img_height, args.img_width)
         model = model.to(device)
+    if device is 'cuda':
+        model = torch.nn.DataParallel(model)
 
     print('The model has been created. It looks like this:\n')
     model.describe()
