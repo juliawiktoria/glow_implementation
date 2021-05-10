@@ -113,7 +113,7 @@ class GlowModel(nn.Module):
         self.in_height = img_height
         self.in_width = img_width
 
-        self.levels = _GlowLevelRec(num_features=num_features*4,
+        self.levels = _GlowLevel(num_features=num_features*4,
                                  hid_layers=hid_layers,
                                  num_steps=num_steps,
                                  num_levels=num_levels)
