@@ -57,7 +57,7 @@ class _GlowLevel(nn.Module):
         # create K steps of the flow K x ([t,t,t]) where t is a flow transform
         # channels (features) are multiplied by 4 to account for squeeze operation that takes place before flow steps
         self.flow_steps = nn.ModuleList([_FlowStep(num_features=num_features, hid_layers=hid_layers, step_num=i+1) for i in range(num_steps)])
-       
+        self.reversed_steps = self.flow_steps[::-1]
         if num_levels > 1:
             self.next_lvl = _GlowLevel(num_features=num_features*2,
                                        hid_layers=hid_layers,
@@ -91,7 +91,7 @@ class _GlowLevel(nn.Module):
             x = self.squeeze(x, reverse=True)
         
         if reverse:
-            for step in self.flow_steps:
+            for step in self.reversed_steps:
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
         
         return x, sum_lower_det_jacobian
@@ -145,7 +145,7 @@ class GlowModel(nn.Module):
         else:
             sum_lower_det_jacobian = torch.zeros(x.size(0), device=x.device)
         
-        x = self.squeeze(x)
+        x = self.squeeze(x, reverse)
         x, sum_lower_det_jacobian = self.levels(x, sum_lower_det_jacobian, reverse)
         x = self.squeeze(x, reverse=True)
 
