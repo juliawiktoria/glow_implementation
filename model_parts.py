@@ -54,7 +54,6 @@ class ActivationNormalisation(nn.Module):
         print('\t\t\t - > Act Norm with {} num_features; bias: {}; logs: {}'.format(self.num_features, self.bias.size(), self.logs.size()))
     
     def init_params(self, x):
-        print('init params act norm')
         with torch.no_grad():
             bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
             v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
