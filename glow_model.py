@@ -76,10 +76,9 @@ class _GlowLevel(nn.Module):
             print('\t\t - > Split layer')
             self.next_lvl.describe()
     
-    def forward(self, x, sum_lower_det_jacobian, reverse=False, temp=None):
+    def forward(self, x, sum_lower_det_jacobian, reverse=False):
         # normal forward pass when reverse == False
         if not reverse:
-            # print('level #{} steps'.format(self.lvl_id))
             for step in self.flow_steps:
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
             
@@ -91,7 +90,7 @@ class _GlowLevel(nn.Module):
             x = self.squeeze(x, reverse=True)
         
         if reverse:
-            for step in self.reversed_steps:
+            for step in reversed(self.flow_steps):
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
         
         return x, sum_lower_det_jacobian
