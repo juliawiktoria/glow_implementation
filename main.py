@@ -135,6 +135,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
+    os.makedirs('image_grids', exist_ok=True)
+
     # training on GPU if possible
     device = 'cuda' if torch.cuda.is_available() and not args.no_gpu else 'cpu'
 
