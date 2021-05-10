@@ -45,11 +45,11 @@ class _FlowStep(nn.Module):
         return x, log_det_jacobian
 
 # class for building GlowModel, not to be used on its own
-class _GlowLevelRec(nn.Module):
+class _GlowLevel(nn.Module):
     # creates a chain of levels
     # level comprises of a squeeze step, K flow steps, and split step (except for the last leves, which does not have a split step)
     def __init__(self, num_features, hid_layers, num_steps, num_levels, lvl_id=1):
-        super(_GlowLevelRec, self).__init__()
+        super(_GlowLevel, self).__init__()
         # lvl ID for description and reference
         self.lvl_id = lvl_id
         # squeeze operation
@@ -101,9 +101,9 @@ class _GlowLevelRec(nn.Module):
         return x, sum_lower_det_jacobian
 
 # the whole model
-class GlowModelRec(nn.Module):
+class GlowModel(nn.Module):
     def __init__(self, num_features, hid_layers, num_levels, num_steps, img_height, img_width):
-        super(GlowModelRec, self).__init__()
+        super(GlowModel, self).__init__()
         self.register_buffer('bounds', torch.tensor([0.9], dtype=torch.float32))
         self.num_features = num_features
         self.hid_layers = hid_layers
