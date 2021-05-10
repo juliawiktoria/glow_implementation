@@ -80,8 +80,6 @@ class _GlowLevel(nn.Module):
             self.next_lvl.describe()
     
     def forward(self, x, sum_lower_det_jacobian, reverse=False, temp=None):
-        print('lvl #{}, has next: {}'.format(self.lvl_id, self.next_lvl is not None))
-        
         # normal forward pass when reverse == False
         if not reverse:
             for step in self.flow_steps:
