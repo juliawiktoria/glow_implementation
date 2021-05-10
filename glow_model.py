@@ -45,21 +45,24 @@ class _FlowStep(nn.Module):
         return x, log_det_jacobian
 
 # class for building GlowModel, not to be used on its own
-class _GlowLevel(nn.Module):
+class _GlowLevelRec(nn.Module):
     # creates a chain of levels
     # level comprises of a squeeze step, K flow steps, and split step (except for the last leves, which does not have a split step)
     def __init__(self, num_features, hid_layers, num_steps, num_levels, lvl_id=1):
-        super(_GlowLevel, self).__init__()
+        super(_GlowLevelRec, self).__init__()
         # lvl ID for description and reference
         self.lvl_id = lvl_id
         # squeeze operation
-        self.squeeze = Squeeze()
+        # self.squeeze = Squeeze()
         # create K steps of the flow K x ([t,t,t]) where t is a flow transform
         # channels (features) are multiplied by 4 to account for squeeze operation that takes place before flow steps
         self.flow_steps = nn.ModuleList([_FlowStep(num_features=num_features, hid_layers=hid_layers, step_num=i+1) for i in range(num_steps)])
         self.reversed_steps = reversed(self.flow_steps)
+
+        self.squeeze = Squeeze()
+
         if num_levels > 1:
-            self.next_lvl = _GlowLevel(num_features=num_features*2,
+            self.next_lvl = _GlowLevelRec(num_features=num_features*2,
                                        hid_layers=hid_layers,
                                        num_steps=num_steps,
                                        num_levels=num_levels-1,
@@ -76,14 +79,16 @@ class _GlowLevel(nn.Module):
             print('\t\t - > Split layer')
             self.next_lvl.describe()
     
-    def forward(self, x, sum_lower_det_jacobian, reverse=False):
+    def forward(self, x, sum_lower_det_jacobian, reverse=False, temp=None):
+        print('lvl #{}, has next: {}'.format(self.lvl_id, self.next_lvl is not None))
+        
         # normal forward pass when reverse == False
         if not reverse:
             for step in self.flow_steps:
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
             
         if self.next_lvl is not None:
-            x = self.squeeze(x)
+            x = self.squeeze(x, reverse)
             x_1, x_2 = x.chunk(2, dim=1)
             x, sum_lower_det_jacobian = self.next_lvl(x_1, sum_lower_det_jacobian, reverse)
             x = torch.cat((x, x_2), dim=1)
@@ -96,9 +101,10 @@ class _GlowLevel(nn.Module):
         return x, sum_lower_det_jacobian
 
 # the whole model
-class GlowModel(nn.Module):
+class GlowModelRec(nn.Module):
     def __init__(self, num_features, hid_layers, num_levels, num_steps, img_height, img_width):
-        super(GlowModel, self).__init__()
+        super(GlowModelRec, self).__init__()
+        self.register_buffer('bounds', torch.tensor([0.9], dtype=torch.float32))
         self.num_features = num_features
         self.hid_layers = hid_layers
         self.num_levels = num_levels
@@ -107,12 +113,10 @@ class GlowModel(nn.Module):
         self.in_height = img_height
         self.in_width = img_width
 
-        self.levels = _GlowLevel(num_features=num_features*4,
+        self.levels = _GlowLevelRec(num_features=num_features*4,
                                  hid_layers=hid_layers,
                                  num_steps=num_steps,
                                  num_levels=num_levels)
-
-        self.register_buffer('bounds', torch.tensor([0.9], dtype=torch.float32))
 
         self.squeeze = Squeeze()
 
@@ -141,6 +145,7 @@ class GlowModel(nn.Module):
             if x.min() < 0 or x.max() > 1:
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
             x, sum_lower_det_jacobian = self._pre_process(x)
+        # defining first logdet for the reversed pass
         else:
             sum_lower_det_jacobian = torch.zeros(x.size(0), device=x.device)
         
