@@ -207,7 +207,7 @@ class Squeeze(nn.Module):
             x = x.view(b, c // 4, 2, 2, h, w)
             x = x.permute(0, 1, 4, 2, 5, 3).contiguous()
             x = x.view(b, c // 4, h * 2, w * 2)
-            print('x size after unsqueeze: {}'.format(x.size()))
+            # print('x size after unsqueeze: {}'.format(x.size()))
             # output shape: (b, c/4, 2h, 2w)
         return x
 
