@@ -57,7 +57,7 @@ class _GlowLevel(nn.Module):
         # create K steps of the flow K x ([t,t,t]) where t is a flow transform
         # channels (features) are multiplied by 4 to account for squeeze operation that takes place before flow steps
         self.flow_steps = nn.ModuleList([_FlowStep(num_features=num_features, hid_layers=hid_layers, step_num=i+1) for i in range(num_steps)])
-        self.reversed_steps = self.flow_steps[::-1]
+        self.reversed_steps = reversed(self.flow_steps)
         if num_levels > 1:
             self.next_lvl = _GlowLevel(num_features=num_features*2,
                                        hid_layers=hid_layers,
@@ -83,14 +83,15 @@ class _GlowLevel(nn.Module):
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
             
         if self.next_lvl is not None:
-            x = self.squeeze(x, reverse)
+            x = self.squeeze(x)
             x_1, x_2 = x.chunk(2, dim=1)
             x, sum_lower_det_jacobian = self.next_lvl(x_1, sum_lower_det_jacobian, reverse)
             x = torch.cat((x, x_2), dim=1)
             x = self.squeeze(x, reverse=True)
         
         if reverse:
-            for step in reversed(self.flow_steps):
+            print('reversed lelev: {}'.format(x.size()))
+            for step in self.reversed_steps:
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
         
         return x, sum_lower_det_jacobian
@@ -142,9 +143,11 @@ class GlowModel(nn.Module):
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
             x, sum_lower_det_jacobian = self._pre_process(x)
         else:
+            print('reverse mode')
             sum_lower_det_jacobian = torch.zeros(x.size(0), device=x.device)
+            print('x size: {}'.format(x.size()))
         
-        x = self.squeeze(x, reverse)
+        x = self.squeeze(x)
         x, sum_lower_det_jacobian = self.levels(x, sum_lower_det_jacobian, reverse)
         x = self.squeeze(x, reverse=True)
 
