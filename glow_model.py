@@ -62,7 +62,7 @@ class _GlowLevel(nn.Module):
         self.squeeze = Squeeze()
 
         if num_levels > 1:
-            self.next_lvl = _GlowLevelRec(num_features=num_features*2,
+            self.next_lvl = _GlowLevel(num_features=num_features*2,
                                        hid_layers=hid_layers,
                                        num_steps=num_steps,
                                        num_levels=num_levels-1,
