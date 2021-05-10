@@ -90,7 +90,6 @@ class _GlowLevel(nn.Module):
             x = self.squeeze(x, reverse=True)
         
         if reverse:
-            print('reversed lelev: {}'.format(x.size()))
             for step in self.reversed_steps:
                 x, sum_lower_det_jacobian = step(x, sum_lower_det_jacobian, reverse)
         
@@ -143,9 +142,7 @@ class GlowModel(nn.Module):
                 raise ValueError('Expected x in [0, 1], got min/max [{}, {}]'.format(x.min(), x.max()))
             x, sum_lower_det_jacobian = self._pre_process(x)
         else:
-            print('reverse mode')
             sum_lower_det_jacobian = torch.zeros(x.size(0), device=x.device)
-            print('x size: {}'.format(x.size()))
         
         x = self.squeeze(x)
         x, sum_lower_det_jacobian = self.levels(x, sum_lower_det_jacobian, reverse)
