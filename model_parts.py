@@ -5,10 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.data as data
-import torch.optim as optim
-import torch.optim.lr_scheduler as sched
-import torch.backends.cudnn as cudnn
 
 import utilities
 

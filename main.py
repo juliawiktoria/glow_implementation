@@ -1,13 +1,11 @@
 ## Standard libraries
 import os
 import time
-import numpy as np
 import argparse
 import sys
 
 # pytorch
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as sched
 
