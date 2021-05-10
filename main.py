@@ -113,7 +113,7 @@ if __name__ == '__main__':
     # training parameters
     parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
     parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs.')
-    parser.add_argument('--resume_training', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
+    parser.add_argument('--load_model', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
     parser.add_argument('--num_samples', type=int, default=32, help='Number of samples.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
     parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     scheduler = sched.LambdaLR(optimizer, lambda s: min(1., s / args.sched_warmup))
 
     # account for training continuation; if incorrect checkpoint file name terminate the program with an appropriate error message
-    if args.resume_training:
+    if args.load_model:
         if args.ckpt_path == "NONE":
             # print("No path for the checkpoint file has been specified. Training will start without any checkpoint.")
             sys.exit("Chechpoint file must be specified when continuing training.")
