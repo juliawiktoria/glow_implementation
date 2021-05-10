@@ -6,6 +6,8 @@ import os
 import torch.nn as nn
 import torchvision
 
+# ==================== METRIC CALCULATIONS ============================
+
 # standard meter class used tracking metrics of generative models
 class AvgMeter(object):
     def __init__(self):
@@ -47,6 +49,15 @@ class NLLLoss(nn.Module):
         nll = -ll.mean()
         return nll
 
+# calculates bpd metric according to the definition
+def bits_per_dimension(x, nll):
+    b, c, h, w = x.size()
+    dim = c * h * w
+    bpd = nll / (np.log(2) * dim)
+    return bpd
+
+# ====================== INNER CALCS FOR MODEL PARTS AND TRAINING ================
+
 # calculates mean of values over every dimension of the tensor if there are multiple dimensions
 def mean_over_dimensions(tensor, dim=None, keepdims=False):
     if dim is None:
@@ -67,23 +78,20 @@ def clip_gradient_norm(optimizer, max_norm, norm_type=2):
     for group in optimizer.param_groups:
         utils.clip_grad_norm(group['params'], max_norm, norm_type)
 
-# calculates bpd metric according to the definition
-def bits_per_dimension(x, nll):
-    b, c, h, w = x.size()
-    dim = c * h * w
-    bpd = nll / (np.log(2) * dim)
-    return bpd
+# ===================== SAMPLING =============================================
 
 # getting a sample of n (num_samples) images from latent space
 @torch.no_grad()
 def sample(model, device, args):
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
-    print('b: {}, c: {}, h: {}, w: {}'.format(args.num_samples, args.num_features, args.img_height, args.img_width))
-    z = torch.randn((args.num_samples, args.num_features*4, args.img_height, args.img_width), dtype=torch.float32, device=device)
+    z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
+    print('z sample size: {}'.size())
     # use the invertibility principle to get the sample
     imgs, _ = model(z, reverse=True)
     imgs = torch.sigmoid(imgs)
     return imgs
+
+# ===================== SAVING IMAGES AND CHECKPOINTS ====================
 
 def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, if_grid=False):
     os.makedirs(saving_pth, exist_ok=True) # create a dir for each epoch
@@ -93,9 +101,9 @@ def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, 
             torchvision.utils.save_image(imgs[i, :, :, :], '{}/img_{}.png'.format(saving_pth, i))
     # save images in one grid in one image
     if if_grid:
-      # save a grid of images
-            images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
-            torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
+        # save a grid of images in a pre-made directory, this one is not custom, maybe in the future
+        images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
+        torchvision.utils.save_image(images_concat, 'image_grids/grid_epoch_{}.png'.format(epoch))
 
 def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_loss, best=False):
   # just overwrite a file to know which checkpoint is the best
@@ -110,45 +118,3 @@ def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_
                 'optim': optimizer.state_dict(),
                 'sched': scheduler.state_dict()}, file_name)
     print("model saved to a file named {}".format(file_name))
-
-# calculation for reverse split layer
-def gaussian_sample(mean, logs, temperature=1):
-    # Sample from Gaussian with temperature
-    z = torch.normal(mean, torch.exp(logs) * temperature)
-    return z
-
-def gaussian_p(mean, logs, x):
-    """
-    lnL = -1/2 * { ln|Var| + ((X - Mu)^T)(Var^-1)(X - Mu) + kln(2*PI) }
-            k = 1 (Independent)
-            Var = logs ** 2
-    """
-    c = math.log(2 * math.pi)
-    return -0.5 * (logs * 2. + ((x - mean) ** 2) / torch.exp(logs * 2.) + c)
-
-# computing gaussian likelihood
-def gaussian_likelihood(mean, logs, x):
-    p = gaussian_p(mean, logs, x)
-    return torch.sum(p, dim=[1, 2, 3])
-
-def split_feature(tensor, type="split"):
-    """
-    type = ["split", "cross"]
-    """
-    C = tensor.size(1)
-    if type == "split":
-        return tensor[:, :C // 2, ...], tensor[:, C // 2:, ...]
-    elif type == "cross":
-        return tensor[:, 0::2, ...], tensor[:, 1::2, ...]
-
-def compute_same_pad(kernel_size, stride):
-    if isinstance(kernel_size, int):
-        kernel_size = [kernel_size]
-
-    if isinstance(stride, int):
-        stride = [stride]
-
-    assert len(stride) == len(kernel_size),\
-        "Pass kernel size and stride both as int, or both as equal length iterable"
-
-    return [((k - 1) * s + 1) // 2 for k, s in zip(kernel_size, stride)]
