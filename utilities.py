@@ -79,7 +79,7 @@ def bits_per_dimension(x, nll):
 def sample(model, device, args):
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
     print('b: {}, c: {}, h: {}, w: {}'.format(args.num_samples, args.num_features, args.img_height, args.img_width))
-    z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
+    z = torch.randn((args.num_samples, args.num_features*4, args.img_height, args.img_width), dtype=torch.float32, device=device)
     # use the invertibility principle to get the sample
     imgs, _ = model(z, reverse=True)
     imgs = torch.sigmoid(imgs)
