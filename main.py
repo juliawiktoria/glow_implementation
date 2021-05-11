@@ -106,18 +106,18 @@ if __name__ == '__main__':
     parser.add_argument('--num_levels', type=int, default=2, help='Number of flow levels.')
     parser.add_argument('--num_steps', type=int, default=4, help='Number of flow steps.')
     # optimizer and scheduler parameters
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate for the optimizer.')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate for the optimizer.')
     parser.add_argument('--grad_norm', type=float, default=-1., help="Maximum value of gradient.")
-    parser.add_argument('--sched_warmup', type=int, default=500, help='Warm-up period for scheduler.')
+    parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     # training parameters
     parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
-    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs.')
+    parser.add_argument('--epochs', type=int, default=3, help='Number of training epochs.')
     parser.add_argument('--load_model', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
     parser.add_argument('--num_samples', type=int, default=32, help='Number of samples.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
     parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
     # dataset 
-    parser.add_argument('--dataset', type=str, required=True, choices=['mnist', 'cifar10', 'chest_xray'], help='Choose dataset: [mnist/cifar10/chest_xray]')
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['mnist', 'cifar10', 'chest_xray'], help='Choose dataset: [mnist/cifar10/chest_xray]')
     parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for datasets.')
     parser.add_argument('--download', action='store_true', default=False, help='Flad indicating when a dataset should be downloaded.')
     # checkpointing and img saving
