@@ -54,7 +54,6 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
             # updating the global step using the batch size used for training
             global_step += x.size(0)
-    return global_step
 
 @torch.no_grad()
 def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best_loss, args):
@@ -212,7 +211,7 @@ if __name__ == '__main__':
             start_time = time.time()
 
             # each epoch consist of training part and testing part
-            new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, global_step, args.grad_norm)
+            new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
             new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
 
             global_step, best_loss = new_global_step, new_best_loss
