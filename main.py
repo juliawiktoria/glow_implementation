@@ -188,6 +188,7 @@ if __name__ == '__main__':
             best_loss = checkpoint_loaded['test_loss']
             starting_epoch = checkpoint_loaded['epoch']
             global_step = starting_epoch * len(trainset)
+            print('Loading checkpoint file with best loss: {}, starting epoch: {}, and global step: {}'.format(best_loss, starting_epoch, global_step))
         print("resuming training from checkpoint file: {}".format(args.ckpt_path))
     else:
         # if training from scratch then init default values
