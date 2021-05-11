@@ -114,9 +114,9 @@ class CNN(nn.Module):
         self.mid_conv = nn.Conv2d(hid_layers, hid_layers, kernel_size=1, padding=0, bias=False)
         nn.init.normal_(self.mid_conv.weight, 0., 0.05)
 
-        self.mid_norm_2 = norm_function(hid_layers)
-        self.mid_conv_2 = nn.Conv2d(hid_layers, hid_layers, kernel_size=1, padding=0, bias=False)
-        nn.init.normal_(self.mid_conv_2.weight, 0., 0.05)
+        # self.mid_norm_2 = norm_function(hid_layers)
+        # self.mid_conv_2 = nn.Conv2d(hid_layers, hid_layers, kernel_size=1, padding=0, bias=False)
+        # nn.init.normal_(self.mid_conv_2.weight, 0., 0.05)
 
         self.out_norm = norm_function(hid_layers)
         self.out_conv = nn.Conv2d(hid_layers, out_channels, kernel_size=3, padding=1, bias=True)
@@ -132,9 +132,9 @@ class CNN(nn.Module):
         x = F.relu(x)
         x = self.mid_conv(x)
 
-        x, _ = self.mid_norm_2(x)
-        x = F.relu(x)
-        x = self.mid_conv_2(x)
+        # x, _ = self.mid_norm_2(x)
+        # x = F.relu(x)
+        # x = self.mid_conv_2(x)
 
         x, _ = self.out_norm(x)
         x = F.relu(x)
