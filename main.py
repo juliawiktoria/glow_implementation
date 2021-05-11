@@ -192,7 +192,8 @@ if __name__ == '__main__':
         # if training from scratch then init default values
         # initialising variables for keeping track of the global step and the best loss so far
         global_step = 0
-        best_loss = math.inf
+        # best_loss = math.inf
+        best_loss = 0
         starting_epoch = 1
 
     # run in training mode
