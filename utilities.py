@@ -100,8 +100,8 @@ def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, 
     # save images in one grid in one image
     if if_grid:
         # save a grid of images in a pre-made directory, this one is not custom, maybe in the future
-        images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
-        torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
+        image_grid = torchvision.utils.make_grid(imgs, nrow=4, padding=2, pad_value=255)
+        torchvision.utils.save_image(image_grid, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
 
 def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_loss, best=False):
   # just overwrite a file to know which checkpoint is the best

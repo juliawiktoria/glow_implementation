@@ -36,18 +36,19 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             # forward pass so reverse mode is turned off
             z, sldj = model(x, reverse=False)
             # calculating and updating loss
-            loss = loss_func(z, sldj)
-            loss_meter.update(loss.item(), x.size(0))
-            loss.backward()
+            current_loss = loss_func(z, sldj)
+            loss_meter.update(current_loss.item(), x.size(0))
+            # backprop loss
+            current_loss.backward()
 
             # clip gradient if too much
-            if max_grad_norm > 0:
-                clip_grad_norm(optimizer, max_grad_norm)
+            # if max_grad_norm > 0:
+            #     clip_grad_norm(optimizer, max_grad_norm)
 
             # advance optimizer and scheduler and update parameters
             optimizer.step()
-            scheduler.step()
-            # scheduler.step(global_step)
+            scheduler.step(global_step)
+
             progress_bar.set_postfix(nll=loss_meter.avg,
                                     bpd=bits_per_dimension(z, loss_meter.avg),
                                     lr=optimizer.param_groups[0]['lr'])
@@ -68,8 +69,8 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
     for x, _ in testloader:
         x = x.to(device)
         z, sldj = model(x, reverse=False)
-        loss = loss_func(z, sldj)
-        loss_meter.update(loss.item(), x.size(0))
+        current_loss = loss_func(z, sldj)
+        loss_meter.update(current_loss.item(), x.size(0))
 
     if loss_meter.avg < best_loss:
         print('Updating best loss: [{}] -> [{}]'.format(best_loss, loss_meter.avg))
@@ -192,8 +193,8 @@ if __name__ == '__main__':
         # if training from scratch then init default values
         # initialising variables for keeping track of the global step and the best loss so far
         global_step = 0
-        # best_loss = math.inf
-        best_loss = 0
+        best_loss = math.inf
+        # best_loss = 0
         starting_epoch = 1
 
     # run in training mode
