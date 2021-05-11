@@ -84,7 +84,6 @@ def clip_grad_norm(optimizer, max_norm, norm_type=2):
 def sample(model, device, args):
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
     z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
-    print('z sample size: {}'.format(z.size()))
     # use the invertibility principle to get the sample
     imgs, _ = model(z, reverse=True)
     imgs = torch.sigmoid(imgs)
@@ -93,9 +92,7 @@ def sample(model, device, args):
 # ===================== SAVING IMAGES AND CHECKPOINTS ====================
 
 def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, if_grid=False):
-    grids = 'samples/grids'
     os.makedirs(saving_pth, exist_ok=True) # create a dir for each epoch
-    os.makedirs(grids, exist_ok=True) # create a dir for grids
     # save every image separately
     if if_separate:
         for i in range(imgs.size(0)):
@@ -104,7 +101,7 @@ def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, 
     if if_grid:
         # save a grid of images in a pre-made directory, this one is not custom, maybe in the future
         images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
-        torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(grids, epoch))
+        torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
 
 def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_loss, best=False):
   # just overwrite a file to know which checkpoint is the best

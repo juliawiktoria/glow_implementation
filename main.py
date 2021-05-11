@@ -21,9 +21,7 @@ from tqdm import tqdm
 
 # enablig grad for loss calc
 @torch.enable_grad()
-def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm):
-# def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
-    global global_step
+def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, global_step):
     print("\t-> TRAIN")
     # initialising training mode; just so the model "knows" it is training
     model.train()
@@ -60,8 +58,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     # return global_step
 
 @torch.no_grad()
-def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, args):
-    global best_loss
+def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best_loss, args):
     print("\t-> TEST")
     # setting a flag for indicating if this epoch is best ever
     best = False
@@ -99,8 +96,45 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, args
 
     return best_loss
 
+if __name__ == '__main__':
 
-def start(args):
+    # parsing args for easier running of the program
+    parser = argparse.ArgumentParser()
+    
+    # model parameters
+    parser.add_argument('--model', type=str, default='glow', help='Name of the model in use.')
+    parser.add_argument('--hidden_layers', type=int, default=512, help='Number of channels.')
+    parser.add_argument('--num_levels', type=int, default=3, help='Number of flow levels.')
+    parser.add_argument('--num_steps', type=int, default=32, help='Number of flow steps.')
+    # optimizer and scheduler parameters
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate for the optimizer.')
+    parser.add_argument('--grad_norm', type=float, default=-1., help="Maximum value of gradient.")
+    parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
+    # training parameters
+    parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
+    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs.')
+    parser.add_argument('--load_model', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
+    parser.add_argument('--num_samples', type=int, default=16, help='Number of samples.')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
+    parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
+    # dataset 
+    parser.add_argument('--dataset', type=str, default='cifar10', choices=['mnist', 'cifar10', 'chest_xray'], help='Choose dataset: [mnist/cifar10/chest_xray]')
+    parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for datasets.')
+    parser.add_argument('--download', action='store_true', default=False, help='Flad indicating when a dataset should be downloaded.')
+    # checkpointing and img saving
+    parser.add_argument('--ckpt_interval', type=int, default=1, help='Create a checkpoint file every N epochs.')
+    parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
+    parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
+    parser.add_argument('--grid_interval', type=int, default=1, help='How often to save images in a nice grid.')
+    # image params 
+    parser.add_argument('--num_features', type=int, default=3, help='Number of spatial channels of an image [cifar10: 3 / mnist: 1].')
+    parser.add_argument('--img_height', type=int, default=32, help='Image height in pixels [cifar10: 32 / mnist: 28]')
+    parser.add_argument('--img_width', type=int, default=32, help='Image width in pixels [cifar10: 32 / mnist: 28]')
+
+    # python main.py --epochs 10 --download
+
+    args = parser.parse_args()
+
     # training on GPU if possible
     device = 'cuda' if torch.cuda.is_available() and not args.no_gpu else 'cpu'
 
@@ -150,10 +184,8 @@ def start(args):
             model.load_state_dict(checkpoint_loaded['state_dict'])
             optimizer.load_state_dict(checkpoint_loaded['optim'])
             scheduler.load_state_dict(checkpoint_loaded['sched'])
-            global best_loss
             best_loss = checkpoint_loaded['test_loss']
             starting_epoch = checkpoint_loaded['epoch']
-            global global_step
             global_step = starting_epoch * len(trainset)
         print("resuming training from checkpoint file: {}".format(args.ckpt_path))
     else:
@@ -181,8 +213,10 @@ def start(args):
             start_time = time.time()
 
             # each epoch consist of training part and testing part
-            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
-            test(epoch, model, testloader, device, optimizer, scheduler, loss_function, args)
+            new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
+            new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
+
+            global_step, best_loss = new_global_step, new_best_loss
 
             elapsed_time = time.time() - start_time
             # recording time per epoch to a dataframe
@@ -199,46 +233,3 @@ def start(args):
     else:
         model.describe()
         sys.exit('Incorrect usage mode! Try --usage_mode train/sample')
-
-if __name__ == '__main__':
-
-    # parsing args for easier running of the program
-    parser = argparse.ArgumentParser()
-    
-    # model parameters
-    parser.add_argument('--model', type=str, default='glow', help='Name of the model in use.')
-    parser.add_argument('--hidden_layers', type=int, default=256, help='Number of channels.')
-    parser.add_argument('--num_levels', type=int, default=2, help='Number of flow levels.')
-    parser.add_argument('--num_steps', type=int, default=4, help='Number of flow steps.')
-    # optimizer and scheduler parameters
-    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate for the optimizer.')
-    parser.add_argument('--grad_norm', type=float, default=-1., help="Maximum value of gradient.")
-    parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
-    # training parameters
-    parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
-    parser.add_argument('--epochs', type=int, default=3, help='Number of training epochs.')
-    parser.add_argument('--load_model', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
-    parser.add_argument('--num_samples', type=int, default=32, help='Number of samples.')
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
-    parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
-    # dataset 
-    parser.add_argument('--dataset', type=str, default='cifar10', choices=['mnist', 'cifar10', 'chest_xray'], help='Choose dataset: [mnist/cifar10/chest_xray]')
-    parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for datasets.')
-    parser.add_argument('--download', action='store_true', default=False, help='Flad indicating when a dataset should be downloaded.')
-    # checkpointing and img saving
-    parser.add_argument('--ckpt_interval', type=int, default=1, help='Create a checkpoint file every N epochs.')
-    parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
-    parser.add_argument('--ckpt_path', type=str, default='NONE', help='Path to the checkpoint file to use.')
-    parser.add_argument('--grid_interval', type=int, default=1, help='How often to save images in a nice grid.')
-    # image params 
-    parser.add_argument('--num_features', type=int, default=3, help='Number of spatial channels of an image [cifar10: 3 / mnist: 1].')
-    parser.add_argument('--img_height', type=int, default=32, help='Image height in pixels [cifar10: 32 / mnist: 28]')
-    parser.add_argument('--img_width', type=int, default=32, help='Image width in pixels [cifar10: 32 / mnist: 28]')
-
-    # python main.py --epochs 10 --download
-    best_loss = math.inf
-    global_step = 0
-
-    args = parser.parse_args()
-
-    start(args)
