@@ -42,8 +42,7 @@ class NLLLoss(nn.Module):
 
     def forward(self, z, sldj):
         prior_ll = -0.5 * (z ** 2 + np.log(2 * np.pi))
-        prior_ll = prior_ll.flatten(1).sum(-1) \
-            - np.log(self.k) * np.prod(z.size()[1:])
+        prior_ll = prior_ll.flatten(1).sum(-1) - np.log(self.k) * np.prod(z.size()[1:])
         ll = prior_ll + sldj
         nll = -ll.mean()
         return nll

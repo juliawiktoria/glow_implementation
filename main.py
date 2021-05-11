@@ -97,6 +97,81 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best
 
     return best_loss
 
+def train_and_test(epoch, model, trainloader, testloader, device, optimizer, scheduler, loss_func, best_loss, global_step, args):
+    # train
+    print("\t-> TRAIN")
+    # initialising training mode; just so the model "knows" it is training
+    model.train()
+    # initialising counter for loss calculations
+    training_loss_meter = AvgMeter()
+
+    # fancy progress bar
+    with tqdm(total=len(trainloader.dataset)) as progress_bar:
+        for x, _ in trainloader:
+            x = x.to(device)
+            optimizer.zero_grad()
+            # forward pass so reverse mode is turned off
+            z, sldj = model(x, reverse=False)
+            # calculating and updating loss
+            training_loss = loss_func(z, sldj)
+            training_loss_meter.update(training_loss.item(), x.size(0))
+            # backprop loss
+            training_loss.backward()
+
+            # clip gradient if too much
+            if args.grad_norm > 0:
+                clip_grad_norm(optimizer, args.grad_norm)
+
+            # advance optimizer and scheduler and update parameters
+            optimizer.step()
+            scheduler.step(global_step)
+
+            progress_bar.set_postfix(nll=training_loss_meter.avg,
+                                    bpd=bits_per_dimension(z, training_loss_meter.avg),
+                                    lr=optimizer.param_groups[0]['lr'])
+            progress_bar.update(x.size(0))
+
+            # updating the global step using the batch size used for training
+            global_step += x.size(0)
+
+    # test
+    print("\t-> TEST")
+    # setting a flag for indicating if this epoch is best ever
+    best = False
+    model.eval()
+    testing_loss_meter = AvgMeter()
+
+    for x, _ in testloader:
+        x = x.to(device)
+        z, sldj = model(x, reverse=False)
+        testing_loss = loss_func(z, sldj)
+        testing_loss_meter.update(testing_loss.item(), x.size(0))
+
+    if testing_loss_meter.avg < best_loss:
+        print('Updating best loss: [{}] -> [{}]'.format(best_loss, testing_loss_meter.avg))
+        best_loss = testing_loss_meter.avg
+        # indicating this epoch has achieved the best loss value so far
+        best = True
+    
+    # save checkpoint file on interval
+    if epoch % args.ckpt_interval == 0:
+        print('Saving checkpoint file from the epoch #{}'.format(epoch))
+        save_model_checkpoint(model, epoch, args.dataset, optimizer, scheduler, testing_loss_meter.avg, best)
+
+    # Save samples and data on the specified interval
+    if epoch % args.img_interval == 0:
+        print("Saving images from the epoch #{}".format(epoch))
+
+        # getting a sample of n images
+        images = sample(model, device, args)
+        # creating a path to an epoch directory so the images are sorted by epoch
+        path_to_images = 'samples/epoch_' + str(epoch)
+        # deciding if saving images to grid
+        save_grid = epoch % args.grid_interval == 0
+        save_sampled_images(epoch, images, args.num_samples, path_to_images, if_grid=save_grid)
+
+    return best_loss, global_step
+
 if __name__ == '__main__':
 
     # parsing args for easier running of the program
@@ -112,16 +187,16 @@ if __name__ == '__main__':
     parser.add_argument('--grad_norm', type=float, default=-1., help="Maximum value of gradient.")
     parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     # training parameters
-    parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
+    parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating no GPU use.')
     parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs.')
-    parser.add_argument('--load_model', action='store_true', default=False, help='Flag indicating resuming training from checkpoint.')
+    parser.add_argument('--load_model', action='store_true', default=False, help='Flag indicating loading a model from specified checkpoint.')
     parser.add_argument('--num_samples', type=int, default=16, help='Number of samples.')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training.')
     parser.add_argument('--usage_mode', type=str, default='train', help='What mode to run the program in [train/sample] When sampling a path to a checkpoint file MUST be specified.')
     # dataset 
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['mnist', 'cifar10', 'chest_xray'], help='Choose dataset: [mnist/cifar10/chest_xray]')
     parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for datasets.')
-    parser.add_argument('--download', action='store_true', default=False, help='Flad indicating when a dataset should be downloaded.')
+    parser.add_argument('--download', action='store_true', default=False, help='Flag indicating when a dataset should be downloaded.')
     # checkpointing and img saving
     parser.add_argument('--ckpt_interval', type=int, default=1, help='Create a checkpoint file every N epochs.')
     parser.add_argument('--img_interval', type=int, default=1, help='Generate images every N epochs.')
@@ -216,9 +291,9 @@ if __name__ == '__main__':
             start_time = time.time()
 
             # each epoch consist of training part and testing part
-            new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
-            new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
-
+            # new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
+            # new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
+            new_best_loss, new_global_step = train_and_test(epoch, model, trainloader, testloader, device, optimizer, scheduler, loss_function, best_loss, global_step, args)
             global_step, best_loss = new_global_step, new_best_loss
 
             elapsed_time = time.time() - start_time
