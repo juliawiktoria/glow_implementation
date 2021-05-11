@@ -240,3 +240,5 @@ if __name__ == '__main__':
     global_step = 0
 
     args = parser.parse_args()
+
+    start(args)
