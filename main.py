@@ -107,7 +107,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_steps', type=int, default=4, help='Number of flow steps.')
     # optimizer and scheduler parameters
     parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate for the optimizer.')
-    parser.add_argument('--grad_norm', type=float, default=-1, help="Maximum value of gradient.")
+    parser.add_argument('--grad_norm', type=float, default=-1., help="Maximum value of gradient.")
     parser.add_argument('--sched_warmup', type=int, default=500, help='Warm-up period for scheduler.')
     # training parameters
     parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating GPU use.')
@@ -133,8 +133,6 @@ if __name__ == '__main__':
     # python main.py --epochs 10 --download
 
     args = parser.parse_args()
-    
-    os.makedirs('image_grids', exist_ok=True)
 
     # training on GPU if possible
     device = 'cuda' if torch.cuda.is_available() and not args.no_gpu else 'cpu'

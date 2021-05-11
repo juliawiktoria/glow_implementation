@@ -93,7 +93,9 @@ def sample(model, device, args):
 # ===================== SAVING IMAGES AND CHECKPOINTS ====================
 
 def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, if_grid=False):
+    grids = 'samples/grids'
     os.makedirs(saving_pth, exist_ok=True) # create a dir for each epoch
+    os.makedirs(grids, exist_ok=True) # create a dir for grids
     # save every image separately
     if if_separate:
         for i in range(imgs.size(0)):
@@ -102,7 +104,7 @@ def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, 
     if if_grid:
         # save a grid of images in a pre-made directory, this one is not custom, maybe in the future
         images_concat = torchvision.utils.make_grid(imgs, nrow=int(num_samples ** 0.5), padding=2, pad_value=255)
-        torchvision.utils.save_image(images_concat, 'image_grids/grid_epoch_{}.png'.format(epoch))
+        torchvision.utils.save_image(images_concat, '{}/grid_epoch_{}.png'.format(grids, epoch))
 
 def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_loss, best=False):
   # just overwrite a file to know which checkpoint is the best
