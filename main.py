@@ -55,7 +55,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
             # updating the global step using the batch size used for training
             global_step += x.size(0)
-    # return global_step
+    return global_step
 
 @torch.no_grad()
 def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best_loss, args):
