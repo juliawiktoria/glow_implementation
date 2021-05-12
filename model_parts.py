@@ -41,10 +41,10 @@ class InvertedConvolution(nn.Module):
 class ActivationNormalisation(nn.Module):
     def __init__(self, num_features, scale=1.):
         super(ActivationNormalisation, self).__init__()
-        # self.register_buffer('is_initialised', torch.zeros(1))
+        # buffer acts like a module state, not a parameter
+        self.register_buffer('is_initialised', torch.zeros(1))
         self.bias = nn.Parameter(torch.zeros(1, num_features, 1, 1))
         self.logs = nn.Parameter(torch.zeros(1, num_features, 1, 1))
-        self.is_initialised = False
 
         self.num_features = num_features
         self.scale = float(scale)
@@ -55,8 +55,9 @@ class ActivationNormalisation(nn.Module):
     
     def init_params(self, x):
         if not self.training:
+
             return
-            
+
         with torch.no_grad():
             bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
             v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
@@ -92,6 +93,7 @@ class ActivationNormalisation(nn.Module):
     
     def forward(self, x, lower_det_jacobian=None, reverse=False):
         if not self.is_initialised:
+            print('act norm not initialised, initialisning params in the forward pass')
             self.init_params(x)
         
         if not reverse:
