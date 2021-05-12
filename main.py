@@ -56,8 +56,11 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
                 plot_grad_flow(model.named_parameters(), local_step, epoch)
 
             # clip gradient if too much
-            if max_grad_norm > 0:
-                clip_grad_norm(optimizer, max_grad_norm)
+            # if max_grad_norm > 0:
+            #     clip_grad_norm(optimizer, max_grad_norm)
+            
+            torch.nn.utils.clip_grad_value_(model.parameters(), 5)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
 
             if local_step % 2048 == 0:
                 plot_grad_flow(model.named_parameters(), local_step, epoch, after=True)
