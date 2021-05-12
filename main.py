@@ -35,7 +35,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     print("\t-> TRAIN")
     # initialising training mode; just so the model "knows" it is training
     global global_step
-    print(global_step)
+    local_step = 0
     model.train()
     # initialising counter for loss calculations
     loss_meter = AvgMeter()
@@ -52,8 +52,8 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             loss_meter.update(current_loss.item(), x.size(0))
             # backprop loss
             current_loss.backward()
-            if global_step % 2048 == 0:
-                plot_grad_flow(model.named_parameters(), global_step, epoch)
+            if local_step % 2048 == 0:
+                plot_grad_flow(model.named_parameters(), local_step, epoch)
 
             # clip gradient if too much
             if max_grad_norm > 0:
@@ -70,6 +70,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
 
             # updating the global step using the batch size used for training
             global_step += x.size(0)
+            local_step += x.size(0)
     return global_step
 
 @torch.no_grad()
