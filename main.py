@@ -74,7 +74,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             # updating the global step using the batch size used for training
             global_step += x.size(0)
             local_step += x.size(0)
-    return global_step
+    # return global_step
 
 @torch.no_grad()
 def test(epoch, model, testloader, device, loss_func, args):
@@ -115,7 +115,7 @@ def test(epoch, model, testloader, device, loss_func, args):
         save_grid = epoch % args.grid_interval == 0
         save_sampled_images(epoch, images, args.num_samples, path_to_images, if_grid=save_grid)
 
-    return best_loss
+    # return best_loss
 
 if __name__ == '__main__':
 
