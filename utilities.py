@@ -134,4 +134,4 @@ def plot_grad_flow(named_parameters, step, epoch):
     plt.ylabel("average gradient")
     plt.title("Gradient flow")
     plt.grid(True)
-    plt.savefig('gradients/epoch_{}/gradient_{}'.format(step, epoch))
+    plt.savefig('gradients/epoch_{}/gradient_{}'.format(epoch, step))
