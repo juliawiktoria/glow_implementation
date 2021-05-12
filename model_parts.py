@@ -25,13 +25,13 @@ class InvertedConvolution(nn.Module):
         lower_det_jacobian = torch.slogdet(self.weights)[1] * x.size(2) * x.size(3)
 
         if reverse:
-            # print("\t\t\t\t\t -> inv conv reverse pass")
-            weights = torch.inverse(self.weights.double()).float()
-            sldj = sldj - lower_det_jacobian
-        else:
             # print("\t\t\t\t\t -> inv conv forward pass")
             weights = self.weights
             sldj = sldj + lower_det_jacobian
+        else:
+            # print("\t\t\t\t\t -> inv conv reverse pass")
+            weights = torch.inverse(self.weights.double()).float()
+            sldj = sldj - lower_det_jacobian
 
         weights = weights.view(self.num_features, self.num_features, 1, 1)
         z = F.conv2d(x, weights)
@@ -54,6 +54,9 @@ class ActivationNormalisation(nn.Module):
         print('\t\t\t - > Act Norm with {} num_features; bias: {}; logs: {}'.format(self.num_features, self.bias.size(), self.logs.size()))
     
     def init_params(self, x):
+        if not self.training:
+            return
+            
         with torch.no_grad():
             bias = -1 * utilities.mean_over_dimensions(x.clone(), dim=[0, 2, 3], keepdims=True)
             v = utilities.mean_over_dimensions((x.clone() - bias) ** 2, dim=[0, 2, 3], keepdims=True)
