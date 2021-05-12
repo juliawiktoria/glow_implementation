@@ -72,7 +72,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     return global_step
 
 @torch.no_grad()
-def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, args):
+def test(epoch, model, testloader, device, loss_func, args):
 # def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, best_loss, args):
     print("\t-> TEST")
     global best_loss
@@ -96,7 +96,7 @@ def test(epoch, model, testloader, device, optimizer, scheduler, loss_func, args
     # save checkpoint file on interval
     if epoch % args.ckpt_interval == 0:
         print('Saving checkpoint file from the epoch #{}'.format(epoch))
-        save_model_checkpoint(model, epoch, args.dataset, optimizer, scheduler, loss_meter.avg, best)
+        save_model_checkpoint(model, epoch, args.dataset, loss_meter.avg, best)
 
     # Save samples and data on the specified interval
     if epoch % args.img_interval == 0:
@@ -234,7 +234,7 @@ if __name__ == '__main__':
             # new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
             # new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
             train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
-            test(epoch, model, testloader, device, optimizer, scheduler, loss_function, args)
+            test(epoch, model, testloader, device, loss_function, args)
             # global_step, best_loss = new_global_step, new_best_loss
 
             elapsed_time = time.time() - start_time
