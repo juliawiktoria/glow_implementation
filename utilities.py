@@ -95,7 +95,7 @@ def save_sampled_images(epoch, imgs, num_samples, saving_pth, if_separate=True, 
         image_grid = torchvision.utils.make_grid(imgs, nrow=4, padding=2, pad_value=255)
         torchvision.utils.save_image(image_grid, '{}/grid_epoch_{}.png'.format(saving_pth, epoch))
 
-def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_loss, best=False):
+def save_model_checkpoint(model, epoch, dataset_name, avg_loss, best=False):
   # just overwrite a file to know which checkpoint is the best
     if best:
         with open('best_{}_checkpoint.txt'.format(dataset_name), 'w') as file:
@@ -104,13 +104,12 @@ def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_
     file_name = "{}_checkpoint_epoch_{}.pth".format(dataset_name, epoch)
     torch.save({'epoch': epoch,
                 'state_dict': model.state_dict(),
-                'test_loss': avg_loss,
-                'optim': optimizer.state_dict(),
-                'sched': scheduler.state_dict()}, file_name)
+                'test_loss': avg_loss}, file_name)
     print("model saved to a file named {}".format(file_name))
 
 
 def plot_grad_flow(named_parameters, step, epoch):
+    print('plotting epoch {}'.format(epoch))
     os.makedirs('gradients/epoch_{}'.format(epoch), exist_ok=True)
     ave_grads = []
     layers = []
