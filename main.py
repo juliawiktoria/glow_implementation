@@ -149,7 +149,7 @@ if __name__ == '__main__':
         args.num_features = 3
         args.img_height = 32
         args.img_width = 32
-    elif args.datase == 'mnist':
+    elif args.dataset == 'mnist':
         args.num_features = 1
         args.img_height = 28
         args.img_width = 28
