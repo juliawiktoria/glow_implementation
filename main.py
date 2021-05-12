@@ -64,10 +64,10 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
             
             # v2
-            # if max_grad_clip > 0:
-            #     torch.nn.utils.clip_grad_value_(model.parameters(), max_grad_clip)
-            # if max_grad_norm > 0:
-            #     torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            if max_grad_clip > 0:
+                torch.nn.utils.clip_grad_value_(model.parameters(), max_grad_clip)
+            if max_grad_norm > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
 
             # if local_step % 2048 == 0:
             #     plot_grad_flow(model.named_parameters(), local_step, epoch, after=True)
