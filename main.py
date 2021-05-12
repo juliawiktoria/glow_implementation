@@ -19,6 +19,16 @@ from datasets import *
 # from flows import *
 from tqdm import tqdm
 
+# getting a sample of n (num_samples) images from latent space
+@torch.no_grad()
+def sample(model, device, args):
+    # get a specified number of tensors in the shape of a desired images from the normal random distribution
+    z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
+    # use the invertibility principle to get the sample
+    imgs, _ = model(z, reverse=True)
+    imgs = torch.sigmoid(imgs)
+    return imgs
+
 # enablig grad for loss calc
 @torch.enable_grad()
 def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm):
