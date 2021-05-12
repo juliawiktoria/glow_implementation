@@ -65,7 +65,9 @@ class ActivationNormalisation(nn.Module):
 
             self.bias.data.copy_(bias.data)
             self.logs.data.copy_(logs.data)
-            self.is_initialised = True
+            
+            # setting the buffer to be True
+            self.is_initialised += 1
     
     def _center(self, x, reverse=False):
         
