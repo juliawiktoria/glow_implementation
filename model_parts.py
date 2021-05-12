@@ -111,7 +111,7 @@ class CNN(nn.Module):
     # cnn for affine coupling layer with an extra hidden layer
     def __init__(self, num_features, hid_layers, out_channels):
         super(CNN, self).__init__()
-        norm_function = ActivationNormalisation
+        norm_function = nn.BatchNorm2d
 
         self.in_norm = norm_function(num_features)
         self.in_conv = nn.Conv2d(num_features, hid_layers, kernel_size=3, padding=1, bias=False)
@@ -131,11 +131,13 @@ class CNN(nn.Module):
         nn.init.zeros_(self.out_conv.bias)
 
     def forward(self, x):
-        x, _ = self.in_norm(x)
+        x= self.in_norm(x)
+        # x, _ = self.in_norm(x)
         x = F.relu(x)
         x = self.in_conv(x)
 
-        x, _ = self.mid_norm(x)
+        x = self.mid_norm(x)
+        # x, _ = self.mid_norm(x)
         x = F.relu(x)
         x = self.mid_conv(x)
 
@@ -143,7 +145,8 @@ class CNN(nn.Module):
         # x = F.relu(x)
         # x = self.mid_conv_2(x)
 
-        x, _ = self.out_norm(x)
+        x = self.out_norm(x)
+        # x, _ = self.out_norm(x)
         x = F.relu(x)
         x = self.out_conv(x)
 
