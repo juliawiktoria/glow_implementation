@@ -59,6 +59,9 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             if max_grad_norm > 0:
                 clip_grad_norm(optimizer, max_grad_norm)
 
+            if local_step % 2048 == 0:
+                plot_grad_flow(model.named_parameters(), local_step, epoch, after=True)
+
             # advance optimizer and scheduler and update parameters
             optimizer.step()
             scheduler.step(global_step)

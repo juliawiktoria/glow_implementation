@@ -108,8 +108,13 @@ def save_model_checkpoint(model, epoch, dataset_name, avg_loss, best=False):
     print("model saved to a file named {}".format(file_name))
 
 
-def plot_grad_flow(named_parameters, step, epoch):
-    os.makedirs('gradients/epoch_{}'.format(epoch), exist_ok=True)
+def plot_grad_flow(named_parameters, step, epoch, after=False):
+    if after:
+        os.makedirs('gradientsafter/epoch_{}'.format(epoch), exist_ok=True)
+        saving_name = 'gradientsafter/epoch_{}'.format(epoch)
+    else:
+        os.makedirs('gradients/epoch_{}'.format(epoch), exist_ok=True)
+        saving_name = 'gradients/epoch_{}'.format(epoch)
     ave_grads = []
     layers = []
     for n, p in named_parameters:
@@ -124,4 +129,4 @@ def plot_grad_flow(named_parameters, step, epoch):
     plt.ylabel("average gradient")
     plt.title("Gradient flow")
     plt.grid(True)
-    plt.savefig('gradients/epoch_{}/gradient_{}'.format(epoch, step))
+    plt.savefig('{}/gradient_{}'.format(saving_name, step))
