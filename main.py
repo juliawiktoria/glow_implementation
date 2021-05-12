@@ -42,7 +42,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             # backprop loss
             current_loss.backward()
             if global_step % 2048 == 0:
-                plot_grad_flow(model.named_parameters(), global_step)
+                plot_grad_flow(model.named_parameters(), global_step, epoch)
 
             # clip gradient if too much
             if max_grad_norm > 0:
