@@ -51,6 +51,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             current_loss = loss_func(z, sldj)
             loss_meter.update(current_loss.item(), x.size(0))
             # backprop loss
+            model.zero_grad()
             current_loss.backward()
             # if local_step % 2048 == 0:
             #     plot_grad_flow(model.named_parameters(), local_step, epoch)
@@ -60,8 +61,8 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             #     clip_grad_norm(optimizer, max_grad_norm)
             
             # v1
-            torch.nn.utils.clip_grad_value_(model.parameters(), 5)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
+            # torch.nn.utils.clip_grad_value_(model.parameters(), 5)
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
             
             # v2
             if max_grad_clip > 0:
