@@ -109,7 +109,6 @@ def save_model_checkpoint(model, epoch, dataset_name, avg_loss, best=False):
 
 
 def plot_grad_flow(named_parameters, step, epoch):
-    print('plotting epoch {}'.format(epoch))
     os.makedirs('gradients/epoch_{}'.format(epoch), exist_ok=True)
     ave_grads = []
     layers = []
