@@ -4,6 +4,7 @@ import torch.nn.utils as utils
 import os
 import torch.nn as nn
 import torchvision
+import matplotlib.pyplot as plt
 
 # ==================== METRIC CALCULATIONS ============================
 
@@ -81,7 +82,6 @@ def clip_grad_norm(optimizer, max_norm, norm_type=2):
 # getting a sample of n (num_samples) images from latent space
 @torch.no_grad()
 def sample(model, device, args):
-    model.eval()
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
     z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
     # use the invertibility principle to get the sample
@@ -116,3 +116,20 @@ def save_model_checkpoint(model, epoch, dataset_name, optimizer, scheduler, avg_
                 'optim': optimizer.state_dict(),
                 'sched': scheduler.state_dict()}, file_name)
     print("model saved to a file named {}".format(file_name))
+
+
+def plot_grad_flow(named_parameters):
+    ave_grads = []
+    layers = []
+    for n, p in named_parameters:
+        if(p.requires_grad) and ("bias" not in n):
+            layers.append(n)
+            ave_grads.append(p.grad.abs().mean())
+    plt.plot(ave_grads, alpha=0.3, color="b")
+    plt.hlines(0, 0, len(ave_grads)+1, linewidth=1, color="k" )
+    plt.xticks(range(0,len(ave_grads), 1), layers, rotation="vertical")
+    plt.xlim(xmin=0, xmax=len(ave_grads))
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
