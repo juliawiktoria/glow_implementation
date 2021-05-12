@@ -79,8 +79,9 @@ def clip_grad_norm(optimizer, max_norm, norm_type=2):
 # ===================== SAMPLING =============================================
 
 # getting a sample of n (num_samples) images from latent space
-@torch.no_grad()
+# @torch.no_grad()
 def sample(model, device, args):
+    model.eval()
     # get a specified number of tensors in the shape of a desired images from the normal random distribution
     z = torch.randn((args.num_samples, args.num_features, args.img_height, args.img_width), dtype=torch.float32, device=device)
     # use the invertibility principle to get the sample
