@@ -41,7 +41,8 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             loss_meter.update(current_loss.item(), x.size(0))
             # backprop loss
             current_loss.backward()
-            plot_grad_flow(model.named_parameters())
+            if global_step % 2048 == 0:
+                plot_grad_flow(model.named_parameters(), global_step)
 
             # clip gradient if too much
             if max_grad_norm > 0:
