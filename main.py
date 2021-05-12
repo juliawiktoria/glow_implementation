@@ -31,7 +31,7 @@ def sample(model, device, args):
 
 # enablig grad for loss calc
 @torch.enable_grad()
-def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm):
+def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, max_grad_norm, max_grad_clip):
     print("\t-> TRAIN")
     # initialising training mode; just so the model "knows" it is training
     global global_step
@@ -52,18 +52,25 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
             loss_meter.update(current_loss.item(), x.size(0))
             # backprop loss
             current_loss.backward()
-            if local_step % 2048 == 0:
-                plot_grad_flow(model.named_parameters(), local_step, epoch)
+            # if local_step % 2048 == 0:
+            #     plot_grad_flow(model.named_parameters(), local_step, epoch)
 
             # clip gradient if too much
             # if max_grad_norm > 0:
             #     clip_grad_norm(optimizer, max_grad_norm)
             
+            # v1
             torch.nn.utils.clip_grad_value_(model.parameters(), 5)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 100)
+            
+            # v2
+            # if max_grad_clip > 0:
+            #     torch.nn.utils.clip_grad_value_(model.parameters(), max_grad_clip)
+            # if max_grad_norm > 0:
+            #     torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
 
-            if local_step % 2048 == 0:
-                plot_grad_flow(model.named_parameters(), local_step, epoch, after=True)
+            # if local_step % 2048 == 0:
+            #     plot_grad_flow(model.named_parameters(), local_step, epoch, after=True)
 
             # advance optimizer and scheduler and update parameters
             optimizer.step()
@@ -133,6 +140,7 @@ if __name__ == '__main__':
     # optimizer and scheduler parameters
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate for the optimizer.')
     parser.add_argument('--max_grad_norm', type=float, default=-1., help="Maximum value of gradient.")
+    parser.add_argument('--max_grad_clip', type=float, default=0, help="Maximum value of gradient.")
     parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     # training parameters
     parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating no GPU use.')
@@ -241,7 +249,7 @@ if __name__ == '__main__':
             # each epoch consist of training part and testing part
             # new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
             # new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
-            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.max_grad_norm)
+            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.max_grad_norm, args.max_grad_clip)
             test(epoch, model, testloader, device, loss_function, args)
             # global_step, best_loss = new_global_step, new_best_loss
 
