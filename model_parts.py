@@ -55,7 +55,7 @@ class ActivationNormalisation(nn.Module):
     
     def init_params(self, x):
         if not self.training:
-
+            print('act norm notr training return from init params')
             return
 
         with torch.no_grad():
