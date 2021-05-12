@@ -126,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_steps', type=int, default=32, help='Number of flow steps.')
     # optimizer and scheduler parameters
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate for the optimizer.')
-    parser.add_argument('--grad_norm', type=float, default=-1., help="Maximum value of gradient.")
+    parser.add_argument('--max_grad_norm', type=float, default=-1., help="Maximum value of gradient.")
     parser.add_argument('--sched_warmup', type=int, default=500000, help='Warm-up period for scheduler.')
     # training parameters
     parser.add_argument('--no_gpu', action='store_true', default=False, help='Flag indicating no GPU use.')
@@ -235,7 +235,7 @@ if __name__ == '__main__':
             # each epoch consist of training part and testing part
             # new_global_step = train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm, global_step)
             # new_best_loss = test(epoch, model, testloader, device, optimizer, scheduler, loss_function, best_loss, args)
-            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.grad_norm)
+            train(epoch, model, trainloader, device, optimizer, scheduler, loss_function, args.max_grad_norm)
             test(epoch, model, testloader, device, loss_function, args)
             # global_step, best_loss = new_global_step, new_best_loss
 
