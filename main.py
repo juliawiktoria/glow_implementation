@@ -35,6 +35,7 @@ def train(epoch, model, trainloader, device, optimizer, scheduler, loss_func, ma
     print("\t-> TRAIN")
     # initialising training mode; just so the model "knows" it is training
     global global_step
+    print(global_step)
     model.train()
     # initialising counter for loss calculations
     loss_meter = AvgMeter()
